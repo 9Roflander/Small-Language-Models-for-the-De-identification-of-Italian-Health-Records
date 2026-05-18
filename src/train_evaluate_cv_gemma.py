@@ -292,7 +292,7 @@ def run_cv(model_size):
                                 "macro_f1_std": macro_s, "fold_macros": macros}
     with open(results_path, 'w', encoding='utf-8') as f:
         json.dump(all_results, f, ensure_ascii=False, indent=2)
-    print(f"\nResults → {results_path}")
+    print(f"\nResults -> {results_path}")
 
 
 if __name__ == "__main__":
