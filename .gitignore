@@ -1,0 +1,38 @@
+﻿# Model weights and checkpoints (too large for git)
+llama-3.2-3b-*/
+temp_merged*/
+cv_fold_outputs/
+models/
+checkpoint-*/
+
+# Environments & caches
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Scratch notes/logs with sensitive content
+data/notes.txt
+
+# Logs and scratch output files
+*.log
+output.txt
+output_*.txt
+debug_raw.json
+data/_debug_raw_batch*.txt
+
+# Rejected/intermediate synthetic data
+data/*_rejected.json
+data/synthetic_v2_test20*.json
+data/synthetic_clinical_1000.json
+data/synthetic_clinical_1000_backup.json
+data/synthetic_clinical_100_v4.json
+
+# CV output model checkpoints
+cv_v3_outputs/
+cv_v4_outputs/
+cv_gemma1b_outputs/
+cv_gemma4b_outputs/
+
+# Claude Code internal
+.claude/
