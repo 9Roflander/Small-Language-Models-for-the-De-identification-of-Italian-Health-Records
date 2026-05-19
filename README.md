@@ -4,13 +4,20 @@ Fine-tuning **Llama-3.2-3B** with LoRA + 4-bit NF4 quantization for GDPR-complia
 
 ## Headline Result
 
-| Model | NOME | ETÀ | DATA | LUOGO | **Macro F1** |
-|---|---|---|---|---|---|
-| llama3.2:3b (zero-shot, Miranda et al.) | 0.53 | 0.41 | 0.29 | 0.41 | 0.41 |
-| gemma3:12b (zero-shot, paper best) | **0.81** | 0.14 | 0.65 | **0.88** | 0.620 |
-| **OURS — Llama-3.2-3B fine-tuned (v4, 5-fold CV)** | 0.714 | **0.554** | 0.536 | 0.790 | **🏆 0.6486 ± 0.073** |
+| Model | Params | NOME | ETÀ | DATA | LUOGO | **Macro F1** |
+|---|---|---|---|---|---|---|
+| llama3.2:3b (zero-shot, Miranda et al.) | 3B | 0.53 | 0.41 | 0.29 | 0.41 | 0.41 |
+| gemma3:4b (zero-shot, paper) | 4B | 0.73 | 0.30 | 0.27 | 0.75 | 0.51 |
+| gemma3:12b (zero-shot, paper best) | 12B | **0.81** | 0.14 | 0.65 | **0.88** | 0.620 |
+| **OURS — Gemma-3 1B fine-tuned (5-fold CV)** | **1B** | 0.592 | **0.745** | 0.582 | 0.523 | **0.611 ± 0.109** |
+| **OURS — Llama-3.2-3B fine-tuned v4 (5-fold CV)** | **3B** | 0.714 | 0.554 | 0.536 | 0.790 | **🏆 0.6486 ± 0.073** |
 
-A **3B-parameter** fine-tuned model running on a **12 GB consumer GPU** beats zero-shot 12B+ models under rigorous 5-fold cross-validation. The largest category-specific win is **ETÀ: +0.144 vs paper's best**, demonstrating that fine-tuning resolves age-format ambiguities that confuse general-purpose LLMs.
+Two headline findings:
+
+1. **A 3B-parameter fine-tuned model running on a 12 GB consumer GPU beats zero-shot 12B+ models under rigorous 5-fold cross-validation.** Largest win: **ETÀ +0.144 vs paper's best** (fine-tuning resolves age-format ambiguities that confuse general-purpose LLMs).
+2. **A 1B-parameter fine-tuned model essentially matches a 12B zero-shot model** (0.611 vs 0.620). On the ETÀ category specifically, Gemma-3 1B fine-tuned reaches **0.745** — the highest of any system tested, including our own 3B Llama.
+
+> Gemma-3 4B was attempted but does not fit on a 12 GB GPU even with aggressive memory savings — its 262K-vocab cross-entropy is the OOM cliff. See `FINAL_REPORT.md` §4.5.
 
 See [`FINAL_REPORT.md`](FINAL_REPORT.md) for the complete methodology, ablations, and analysis.
 

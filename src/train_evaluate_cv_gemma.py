@@ -139,7 +139,7 @@ def get_train_dataset(train_gold):
     return combined.map(to_messages, remove_columns=combined.column_names)
 
 
-def get_model_and_tokenizer(model_id):
+def get_model_and_tokenizer(model_id, model_size):
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -149,9 +149,12 @@ def get_model_and_tokenizer(model_id):
     )
     model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=quant, device_map="auto")
     model = prepare_model_for_kbit_training(model)
+    # 4B on 12 GB: attention-only LoRA to cut gradient/optim memory ~70%.
+    targets = (["q_proj", "k_proj", "v_proj", "o_proj"] if model_size == "4b"
+               else ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"])
     lora_cfg = LoraConfig(
         r=16, lora_alpha=32,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        target_modules=targets,
         lora_dropout=0.05, bias="none", task_type="CAUSAL_LM"
     )
     return get_peft_model(model, lora_cfg), tokenizer
@@ -221,10 +224,14 @@ def run_cv(model_size):
         test_gold = gold_arr[test_idx].tolist()
         print(f"  train gold: {len(train_gold)}, test gold: {len(test_gold)}")
 
-        model, tokenizer = get_model_and_tokenizer(model_id)
+        model, tokenizer = get_model_and_tokenizer(model_id, model_size)
         train_ds = get_train_dataset(train_gold)
         print(f"  total train samples: {len(train_ds)}")
 
+        # 4B on 12 GB needs aggressive memory savings; 1B was fine at 1536/no-ckpt.
+        # assistant_only_loss is disabled for 4B because its boolean-indexing op
+        # spikes peak memory by materializing a contiguous copy of [seq, 262K] logits.
+        is_big = model_size == "4b"
         args = SFTConfig(
             output_dir=f"{cv_output_base}/fold_{fold_num}",
             num_train_epochs=2,
@@ -237,8 +244,12 @@ def run_cv(model_size):
             save_strategy="no",
             bf16=True,
             max_grad_norm=1.0,
-            max_length=1536,
-            assistant_only_loss=True,
+            max_length=768 if is_big else 1536,
+            assistant_only_loss=not is_big,
+            gradient_checkpointing=is_big,
+            gradient_checkpointing_kwargs={"use_reentrant": False} if is_big else None,
+            optim="paged_adamw_8bit" if is_big else "adamw_torch",
+            dataloader_pin_memory=not is_big,
         )
         trainer = SFTTrainer(model=model, train_dataset=train_ds, args=args, processing_class=tokenizer)
         trainer.train()

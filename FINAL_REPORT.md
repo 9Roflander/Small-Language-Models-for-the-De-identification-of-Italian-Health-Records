@@ -325,7 +325,44 @@ All other hyperparameters identical to v3. Same KFold split (seed=42) for direct
 3. **NOME F1 jumped 0.59 → 0.71** with more no-name training data. The most fragile category under v3 became one of the stronger ones in v4.
 4. **LUOGO precision is now exceptional** (0.914 ± 0.171). When the model emits a LUOGO tag, it's almost always correct. Recall lags (0.70), so the model is now under-tagging locations — a fixable issue.
 
-### 4.4 Training cost and reproducibility
+### 4.5 Cross-architecture comparison: Gemma-3 1B fine-tuned
+
+To isolate architecture vs. method effects we ran the identical v4 pipeline on `google/gemma-3-1b-it` (a 1B-parameter instruction-tuned model — 3× smaller than our Llama base). Same 5-fold split (seed=42), same training data, same hyperparameters.
+
+**Gemma-3 1B per-fold macro F1:** [0.613, 0.739, 0.722, 0.512, 0.468]
+
+**Aggregated (mean ± std):**
+
+| Category | F1 |
+|---|---|
+| NOME | 0.592 ± 0.187 |
+| **ETÀ** | **0.745 ± 0.108** |
+| DATA | 0.582 ± 0.332 |
+| LUOGO/INDIRIZZO | 0.523 ± 0.199 |
+| **MACRO F1** | **0.611 ± 0.109** |
+
+**Full leaderboard (5-fold CV mean):**
+
+| Model | Params | Approach | Macro F1 |
+|---|---|---|---|
+| llama3.2:3b (paper) | 3B | zero-shot | 0.41 |
+| gemma3:4b (paper) | 4B | zero-shot | 0.51 |
+| mistral:7b (paper) | 7B | zero-shot | 0.43 |
+| **gemma3:12b (paper best)** | **12B** | zero-shot | **0.620** |
+| phi4:14b (paper) | 14B | zero-shot | 0.39 |
+| **Gemma-3 1B (ours)** | **1B** | LoRA fine-tune | **0.611 ± 0.109** |
+| **Llama-3.2-3B v4 (ours)** | **3B** | LoRA fine-tune | **🏆 0.649 ± 0.073** |
+
+**Key observations:**
+
+1. **A 1B fine-tuned model matches a 12B zero-shot model** (0.611 vs 0.620). At 12× fewer parameters and a fraction of the inference cost, fine-tuning on style-anchored synthetic data is the dominant strategy.
+2. **Gemma-3 1B excels at ETÀ** (0.745 — the highest of any system tested, beating Llama v4's 0.554 by +0.19). Gemma's instruction-tuning baseline is better-calibrated on age formats, and fine-tuning amplifies that.
+3. **Higher variance** (std 0.109 vs Llama-3.2-3B's 0.073). The smaller model is more sensitive to fold composition. Fold 5 collapsed on DATA (F1 = 0.000) — Gemma-1B emitted 3 false-positive DATA tags and missed all 4 real dates.
+4. **LUOGO is weaker** than Llama v4 (0.523 vs 0.790). Fewer parameters to memorize Italian location patterns.
+
+**Gemma-3 4B did not fit on the 12 GB GPU.** Even with attention-only LoRA (r=16), `max_length=768`, gradient checkpointing, paged-8bit AdamW, and disabled `assistant_only_loss`, OOM occurred at the cross-entropy step — Gemma-3's 262144-token vocabulary forces a [seq, 262K] logits tensor in fp32 (~800 MB) plus its gradient (~800 MB), and weights+activations already consume ~9.5 GB before the loss step. Fitting Gemma-3 4B on 12 GB would require chunked cross-entropy (e.g., liger-kernel) or layer offloading; we treat this as a known constraint of the consumer-GPU setup. **Itself a useful finding**: Llama-3.2-3B (3B params) fits comfortably on 12 GB, while Gemma-3 4B (4.3B params) does not — Llama-3 is the better small-LLM choice when the deployment target is a single 12 GB card.
+
+### 4.6 Training cost and reproducibility
 
 - **GPU**: 1× RTX 4070 Ti (12 GB)
 - **Single training run**: ~50 min
