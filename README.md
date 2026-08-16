@@ -21,6 +21,21 @@ Two headline findings:
 
 See [`FINAL_REPORT.md`](FINAL_REPORT.md) for the complete methodology, ablations, and analysis.
 
+## BERT-NER Baseline
+
+A fine-tuned Italian BERT token classifier (`dbmdz/bert-base-italian-xxl-cased`), evaluated under the identical 5-fold CV protocol and scored with the same placeholder-count metric, to test whether the "obvious" NER architecture beats the generative redaction approach above.
+
+| Model | Params | Approach | Macro F1 |
+|---|---|---|---|
+| gemma3:12b (zero-shot, paper best) | 12B | zero-shot | 0.620 |
+| **BERT-NER (ours)** | **0.11B** | fine-tuned token classifier | **0.569 ± 0.143** |
+| Gemma-3 1B fine-tuned (ours) | 1B | LoRA fine-tune, generative | 0.611 ± 0.109 |
+| Llama-3.2-3B v4 fine-tuned (ours) | 3B | LoRA fine-tune, generative | 🏆 0.649 ± 0.073 |
+
+It does **not** beat either fine-tuned LLM, and lands below the paper's best zero-shot baseline too — despite being 27–100× smaller. Per-category, its strongest result is ETÀ (0.784, the best ETÀ score of any system tested here), while NOME/DATA/LUOGO show a consistent precision-near-1.0-but-recall-collapses pattern across folds, consistent with class-imbalance underfitting (entity tokens are a small minority against `O` tokens, plain cross-entropy, only 4 epochs, a freshly-initialized classification head). Full per-fold numbers: [`cv_bert_results.json`](cv_bert_results.json).
+
+Unlike the LLM pipeline, this baseline trains on a laptop — no CUDA GPU required, runs on Apple Silicon (MPS) or CPU.
+
 ## Reference Work
 
 This work builds on and benchmarks against:
@@ -55,6 +70,7 @@ Two methodological contributions:
 ├── cv_v3_results.json              # v3 5-fold CV results (878 synth samples)
 ├── cv_v4_results.json              # v4 5-fold CV results (1676 synth samples) — final
 ├── cv_gemma1b_results.json         # Gemma-3-1B comparison run
+├── cv_bert_results.json            # BERT-NER baseline, 5-fold CV
 ├── data/
 │   ├── gold_standard_80.json       # 80 manually annotated Italian clinical notes
 │   ├── synthetic_v2_1000.json      # 624 Gemini-generated, style-anchored, with-names
@@ -72,12 +88,15 @@ Two methodological contributions:
     ├── train_evaluate_cv_v4.py         # v4 5-fold CV pipeline (final)
     ├── train_evaluate_cv_gemma.py      # Gemma-3 (1B/4B) CV comparison
     ├── eval_paper_metric.py            # Standalone paper-metric evaluator
-    └── generalization_test.py          # OOD test (Kazakh/Uzbek entities, year 2034)
+    ├── generalization_test.py          # OOD test (Kazakh/Uzbek entities, year 2034)
+    ├── train_evaluate_cv_bert.py        # BERT-NER 5-fold CV baseline (token classification)
+    ├── pretrain_cpt_bert.py             # BERT domain-adaptive CPT (dyspnea notes + DART drug inserts)
+    └── train_evaluate_cv_bert_cpt.py    # BERT-NER CV starting from the CPT checkpoint above
 ```
 
 ## Setup
 
-**Requirements:** NVIDIA GPU with ≥ 12 GB VRAM (tested on RTX 4070 Ti).
+**Requirements:** NVIDIA GPU with ≥ 12 GB VRAM (tested on RTX 4070 Ti) for the LLM pipelines. The BERT-NER baseline (`src/train_evaluate_cv_bert.py` and friends) is much lighter — 110M params — and trains fine on CPU or Apple Silicon (MPS); no CUDA GPU required. It was developed and run on an Apple M4 MacBook (16 GB).
 
 ```bash
 git clone https://github.com/9Roflander/Small-Language-Models-for-the-De-identification-of-Italian-Health-Records.git
@@ -121,6 +140,29 @@ python src/generalization_test.py
 ```
 
 Phase 1 (CPT) artifacts are not included in this repo (large model weights). The Phase 2 scripts expect a merged base model at `./temp_merged_phase1/`. See `FINAL_REPORT.md` §2.3 for the Phase 1 procedure.
+
+### BERT-NER baseline
+
+Trains an Italian BERT token classifier on the same 5-fold split and gold+synthetic+CRF data mix as the LLM CV pipelines above, so results are directly comparable. No merged Phase-1 checkpoint required — it starts straight from the public `dbmdz/bert-base-italian-xxl-cased` checkpoint.
+
+```bash
+python src/train_evaluate_cv_bert.py    # 5-fold CV -> cv_bert_results.json (~3-4h on an M4 laptop)
+```
+
+**Optional: give BERT its own domain-adaptation step (mirrors the LLM's Phase 1 CPT).** Continues pretraining BERT with masked-language-modeling on the same two corpora named in `FINAL_REPORT.md` §2.3, before the NER fine-tune:
+
+- [`NLP-FBK/dyspnea-clinical-notes`](https://huggingface.co/datasets/NLP-FBK/dyspnea-clinical-notes) (`it` split, 2,667 Italian clinical notes) — public, no auth needed.
+- [`praiselab-picuslab/DART`](https://huggingface.co/datasets/praiselab-picuslab/DART) (16,029 Italian drug package inserts — indications, dosage, contraindications, interactions, adverse effects, one row per medicinal product) — **gated**. Request access on the dataset page with the HF account you intend to use, then authenticate locally:
+  ```bash
+  pip install -U "huggingface_hub[cli]"
+  hf auth login   # paste a token from https://huggingface.co/settings/tokens; run this yourself, not via a script, so the token is never echoed anywhere
+  ```
+  `pretrain_cpt_bert.py` deterministically subsamples 6,000 of DART's 16,029 rows (`seed=42`) to keep training wall-clock time reasonable on a laptop; this is documented in the script rather than silently truncated, so it's easy to raise `DART_SAMPLE_SIZE` back toward the full dataset on faster hardware.
+
+```bash
+python src/pretrain_cpt_bert.py         # MLM continual pretraining -> ./bert_it_clinical_cpt/ (~80min on an M4 laptop)
+python src/train_evaluate_cv_bert_cpt.py  # 5-fold CV from that checkpoint -> cv_bert_cpt_results.json (~3-4h)
+```
 
 ## Entity Categories
 
