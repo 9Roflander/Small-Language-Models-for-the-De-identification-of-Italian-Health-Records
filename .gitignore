@@ -35,6 +35,7 @@ cv_gemma1b_outputs/
 cv_gemma4b_outputs/
 cv_bert_outputs/
 cv_bert_cpt_outputs/
+cv_bert_chunked_outputs/
 bert_it_clinical_cpt/
 bert_it_clinical_cpt_ckpts/
 

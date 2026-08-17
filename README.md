@@ -36,6 +36,8 @@ It does **not** beat either fine-tuned LLM, and lands below the paper's best zer
 
 Unlike the LLM pipeline, this baseline trains on a laptop — no CUDA GPU required, runs on Apple Silicon (MPS) or CPU.
 
+**Follow-up ablations** — a chunking fix for notes longer than BERT's 512-token window, and domain-adaptive continual pretraining (CPT) mirroring the LLM's Phase 1 — are in [`bert_cpt_and_chunking_findings/`](bert_cpt_and_chunking_findings/README.md). Headline: CPT gives +0.080 absolute macro F1 when isolated, but a naive chunking fix actually *hurt* by −0.061 (entities fragment across chunk boundaries), netting only +0.019 over the original baseline (0.569 → 0.588).
+
 ## Reference Work
 
 This work builds on and benchmarks against:
@@ -71,6 +73,10 @@ Two methodological contributions:
 ├── cv_v4_results.json              # v4 5-fold CV results (1676 synth samples) — final
 ├── cv_gemma1b_results.json         # Gemma-3-1B comparison run
 ├── cv_bert_results.json            # BERT-NER baseline, 5-fold CV
+├── bert_cpt_and_chunking_findings/ # BERT ablations: chunking fix + domain-adaptive CPT
+│   ├── README.md                   #   writeup + isolated per-variable deltas
+│   ├── cv_bert_chunked_results.json    #   chunking fix alone (no CPT), 5-fold CV
+│   └── cv_bert_cpt_results.json        #   CPT + chunking fix, 5-fold CV
 ├── data/
 │   ├── gold_standard_80.json       # 80 manually annotated Italian clinical notes
 │   ├── synthetic_v2_1000.json      # 624 Gemini-generated, style-anchored, with-names
@@ -91,7 +97,8 @@ Two methodological contributions:
     ├── generalization_test.py          # OOD test (Kazakh/Uzbek entities, year 2034)
     ├── train_evaluate_cv_bert.py        # BERT-NER 5-fold CV baseline (token classification)
     ├── pretrain_cpt_bert.py             # BERT domain-adaptive CPT (dyspnea notes + DART drug inserts)
-    └── train_evaluate_cv_bert_cpt.py    # BERT-NER CV starting from the CPT checkpoint above
+    ├── train_evaluate_cv_bert_cpt.py    # BERT-NER CV starting from the CPT checkpoint above
+    └── train_evaluate_cv_bert_chunked_test.py  # Ablation: chunking fix alone, no CPT
 ```
 
 ## Setup

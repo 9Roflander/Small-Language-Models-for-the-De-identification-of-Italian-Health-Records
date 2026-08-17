@@ -152,23 +152,35 @@ def build_char_tags(text, spans):
 
 
 def make_tokenize_fn(tokenizer):
+    """Splits each note into non-overlapping chunks of up to (MAX_LENGTH - 2)
+    wordpieces instead of truncating, so notes longer than the model's window
+    (55.8% of the synthetic set, 40% of gold) still contribute full-note
+    training signal rather than having their tail silently dropped."""
+    window = MAX_LENGTH - 2  # room for CLS/SEP
+    cls_id, sep_id = tokenizer.cls_token_id, tokenizer.sep_token_id
+
     def tokenize_and_align(batch):
-        tokenized = tokenizer(batch["text"], truncation=True, max_length=MAX_LENGTH,
-                               return_offsets_mapping=True)
-        all_labels = []
-        for i, offsets in enumerate(tokenized["offset_mapping"]):
+        all_input_ids, all_attention, all_labels = [], [], []
+        for i in range(len(batch["text"])):
+            text = batch["text"][i]
             spans = list(zip(batch["starts"][i], batch["ends"][i], batch["types"][i]))
-            char_tags = build_char_tags(batch["text"][i], spans)
-            labels = []
-            for ts, te in offsets:
-                if ts == te:
-                    labels.append(-100)
-                else:
-                    labels.append(LABEL2ID[char_tags[ts]])
-            all_labels.append(labels)
-        tokenized["labels"] = all_labels
-        tokenized.pop("offset_mapping")
-        return tokenized
+            char_tags = build_char_tags(text, spans)
+            full = tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
+            offsets = full["offset_mapping"]
+            for start in range(0, max(len(offsets), 1), window):
+                chunk_offsets = offsets[start:start + window]
+                if not chunk_offsets:
+                    continue
+                chunk_ids = full["input_ids"][start:start + window]
+                input_ids = [cls_id] + chunk_ids + [sep_id]
+                labels = [-100]
+                for ts, te in chunk_offsets:
+                    labels.append(-100 if ts == te else LABEL2ID[char_tags[ts]])
+                labels.append(-100)
+                all_input_ids.append(input_ids)
+                all_attention.append([1] * len(input_ids))
+                all_labels.append(labels)
+        return {"input_ids": all_input_ids, "attention_mask": all_attention, "labels": all_labels}
     return tokenize_and_align
 
 
@@ -183,33 +195,46 @@ def get_train_dataset(train_gold, synth_rows, crf_rows):
 
 @torch.no_grad()
 def predict_spans(model, tokenizer, text, device):
-    enc = tokenizer(text, truncation=True, max_length=MAX_LENGTH,
-                     return_offsets_mapping=True, return_tensors="pt")
-    offsets = enc.pop("offset_mapping")[0].tolist()
-    enc = {k: v.to(device) for k, v in enc.items()}
-    logits = model(**enc).logits[0]
-    pred_ids = logits.argmax(-1).tolist()
+    """Processes the whole note in non-overlapping (MAX_LENGTH - 2)-token
+    chunks instead of truncating at MAX_LENGTH, so entities past the model's
+    window get a real prediction instead of being silently excluded from the
+    redacted output (which previously let them dodge scoring as a miss)."""
+    window = MAX_LENGTH - 2
+    cls_id, sep_id = tokenizer.cls_token_id, tokenizer.sep_token_id
+    full = tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
+    offsets = full["offset_mapping"]
 
     spans, cur = [], None
     real_ends = [0]
-    for (ts, te), pid in zip(offsets, pred_ids):
-        if ts == te:
+    for start in range(0, max(len(offsets), 1), window):
+        chunk_offsets = offsets[start:start + window]
+        if not chunk_offsets:
             continue
-        real_ends.append(te)
-        label = ID2LABEL[pid]
-        if label == "O":
-            if cur:
-                spans.append(tuple(cur)); cur = None
-            continue
-        prefix, etype = label.split("-", 1)
-        if prefix == "B" or cur is None or cur[2] != etype:
-            if cur:
-                spans.append(tuple(cur))
-            cur = [ts, te, etype]
-        else:
-            cur[1] = te
-    if cur:
-        spans.append(tuple(cur))
+        chunk_ids = full["input_ids"][start:start + window]
+        input_ids = torch.tensor([[cls_id] + chunk_ids + [sep_id]], device=device)
+        attention_mask = torch.ones_like(input_ids)
+        logits = model(input_ids=input_ids, attention_mask=attention_mask).logits[0]
+        pred_ids = logits.argmax(-1).tolist()[1:-1]  # drop CLS/SEP positions
+
+        cur = None  # a span can't continue across a chunk boundary
+        for (ts, te), pid in zip(chunk_offsets, pred_ids):
+            if ts == te:
+                continue
+            real_ends.append(te)
+            label = ID2LABEL[pid]
+            if label == "O":
+                if cur:
+                    spans.append(tuple(cur)); cur = None
+                continue
+            prefix, etype = label.split("-", 1)
+            if prefix == "B" or cur is None or cur[2] != etype:
+                if cur:
+                    spans.append(tuple(cur))
+                cur = [ts, te, etype]
+            else:
+                cur[1] = te
+        if cur:
+            spans.append(tuple(cur))
     processed_end = max(real_ends)
     return spans, processed_end
 
@@ -247,7 +272,11 @@ def evaluate_fold(model, tokenizer, test_gold, device):
 
 def run_cv():
     os.makedirs(CV_OUTPUT_BASE, exist_ok=True)
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = torch.device(
+        "cuda" if torch.cuda.is_available()
+        else "mps" if torch.backends.mps.is_available()
+        else "cpu"
+    )
     print(f"Device: {device}")
 
     with open(GOLD_PATH, "r", encoding="utf-8") as f:
@@ -285,18 +314,20 @@ def run_cv():
         print(f"  total train samples: {len(train_ds_tok)}")
 
         collator = DataCollatorForTokenClassification(tokenizer)
+        steps_per_epoch = -(-len(train_ds_tok) // BATCH_SIZE)  # ceil div
+        warmup_steps = int(steps_per_epoch * NUM_EPOCHS * 0.1)
         args = TrainingArguments(
             output_dir=f"{CV_OUTPUT_BASE}/fold_{fold_num}",
             num_train_epochs=NUM_EPOCHS,
             per_device_train_batch_size=BATCH_SIZE,
             learning_rate=LEARNING_RATE,
             lr_scheduler_type="cosine",
-            warmup_ratio=0.1,
+            warmup_steps=warmup_steps,
             weight_decay=0.01,
             logging_steps=50,
             save_strategy="no",
             report_to=[],
-            use_mps_device=(device.type == "mps"),
+            bf16=(device.type == "cuda"),
         )
         trainer = Trainer(model=model, args=args, train_dataset=train_ds_tok,
                            data_collator=collator, processing_class=tokenizer)
@@ -322,6 +353,8 @@ def run_cv():
         gc.collect()
         if device.type == "mps":
             torch.mps.empty_cache()
+        elif device.type == "cuda":
+            torch.cuda.empty_cache()
 
     print(f"\n{'='*70}\nAGGREGATE (5 folds, mean ± std)\n{'='*70}")
     per_cat = {t: {"p": [], "r": [], "f1": []} for t in VALID_TYPES}

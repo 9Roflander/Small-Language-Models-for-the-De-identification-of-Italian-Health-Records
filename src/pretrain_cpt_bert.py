@@ -86,23 +86,29 @@ def main():
     ds_tok = ds.map(tokenize_fn, batched=True, remove_columns=ds.column_names)
     print(f"  tokenized: {len(ds_tok)} examples")
 
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = torch.device(
+        "cuda" if torch.cuda.is_available()
+        else "mps" if torch.backends.mps.is_available()
+        else "cpu"
+    )
     print(f"Device: {device}")
     model = AutoModelForMaskedLM.from_pretrained(MODEL_NAME).to(device)
 
     collator = DataCollatorForLanguageModeling(tokenizer, mlm=True, mlm_probability=0.15)
+    steps_per_epoch = -(-len(ds_tok) // BATCH_SIZE)  # ceil div
+    warmup_steps = int(steps_per_epoch * NUM_EPOCHS * 0.05)
     args = TrainingArguments(
         output_dir=f"{OUTPUT_DIR}_ckpts",
         num_train_epochs=NUM_EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
         learning_rate=LEARNING_RATE,
         lr_scheduler_type="cosine",
-        warmup_ratio=0.05,
+        warmup_steps=warmup_steps,
         weight_decay=0.01,
         logging_steps=50,
         save_strategy="no",
         report_to=[],
-        use_mps_device=(device.type == "mps"),
+        bf16=(device.type == "cuda"),
     )
     trainer = Trainer(model=model, args=args, train_dataset=ds_tok,
                        data_collator=collator, processing_class=tokenizer)
