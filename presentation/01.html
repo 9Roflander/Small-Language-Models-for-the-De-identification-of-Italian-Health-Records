@@ -1,0 +1,56 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>01 · Title</title>
+<link rel="stylesheet" href="_base.css">
+<style>
+.slide{justify-content:center;align-items:flex-start;}
+.hero{max-width:820px;}
+.badge{display:inline-block;background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);color:var(--res);border-radius:6px;padding:5px 14px;font-size:13px;font-weight:600;margin-bottom:20px;}
+.stats-row{display:flex;gap:24px;margin-top:32px;flex-wrap:wrap;}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 24px;text-align:center;min-width:140px;}
+.author{margin-top:36px;font-size:14px;color:var(--dim);}
+.phase-overview{display:flex;gap:0;align-items:center;margin-top:32px;}
+.po-box{border-radius:8px;padding:12px 20px;font-size:13px;font-weight:600;}
+.po-1{background:rgba(240,136,62,.12);border:1px solid rgba(240,136,62,.3);color:var(--p1);}
+.po-2{background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.3);color:var(--p2);}
+.po-r{background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.3);color:var(--res);}
+.po-arrow{color:var(--dim);padding:0 12px;font-size:20px;}
+</style></head><body>
+<div class="phase-bar ph0"></div>
+<div class="slide">
+  <div class="hero">
+    <div class="badge">CLiC-it 2025 Benchmark · May 2026</div>
+    <h1>Small Language Models for De-identification of Italian Health Records</h1>
+    <p class="lead mt16">Fine-tuning a 3B LLM with Style-Anchored Synthetic Data<br>to Beat Zero-Shot 12B Models</p>
+
+    <div class="phase-overview">
+      <div class="po-box po-1">Phase 1<br><span style="font-size:11px;font-weight:400;opacity:.8;">Domain Adaptation</span></div>
+      <div class="po-arrow">→</div>
+      <div class="po-box po-2">Phase 2<br><span style="font-size:11px;font-weight:400;opacity:.8;">Task Fine-Tuning</span></div>
+      <div class="po-arrow">→</div>
+      <div class="po-box po-r">Evaluation<br><span style="font-size:11px;font-weight:400;opacity:.8;">5-fold CV</span></div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-box cp2">
+        <div class="stat sp2">0.649</div>
+        <div class="sl">Macro-F1<br>our 3B model</div>
+      </div>
+      <div class="stat-box cres">
+        <div class="stat sres">0.620</div>
+        <div class="sl">Macro-F1<br>best zero-shot 12B</div>
+      </div>
+      <div class="stat-box cp1">
+        <div class="stat sp1">4×</div>
+        <div class="sl">fewer parameters<br>to beat it</div>
+      </div>
+    </div>
+
+    <div class="author">Dair Sultangazy · University of Rijeka · ddairov56@gmail.com</div>
+  </div>
+</div>
+<div class="nav">
+  <a class="dead" href="#">← Prev</a>
+  <span class="nav-center">1 / 15</span>
+  <a href="02.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='02.html';});</script>
+</body></html>

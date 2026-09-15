@@ -1,0 +1,334 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{mdframed}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{parskip}
+\usepackage[hidelinks,colorlinks=true,linkcolor=blue!60!black,urlcolor=blue!60!black]{hyperref}
+
+% ── Color palette (mirrors the web slides) ──
+\definecolor{phase1}{RGB}{240,136,62}
+\definecolor{phase2}{RGB}{76,212,162}
+\definecolor{results}{RGB}{106,166,255}
+\definecolor{danger}{RGB}{247,129,102}
+\definecolor{slidebg}{RGB}{240,244,248}
+\definecolor{dimgray}{RGB}{120,135,151}
+
+% ── Slide header box ──
+\newmdenv[
+  backgroundcolor=slidebg,
+  linecolor=dimgray,
+  linewidth=1pt,
+  leftmargin=0pt,
+  rightmargin=0pt,
+  innerleftmargin=12pt,
+  innerrightmargin=12pt,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+  skipabove=12pt,
+  skipbelow=4pt,
+]{slidebox}
+
+% ── Phase label command ──
+\newcommand{\phaselabel}[2]{\textbf{\textcolor{#1}{[#2]}}}
+
+% ── Slide script environment ──
+\newcounter{slidectr}
+\newcommand{\slidescript}[3]{%
+  \stepcounter{slidectr}
+  \begin{slidebox}
+    \noindent\textbf{Slide \theslidectr\ \,—\, #1}\hfill\small\textcolor{dimgray}{#2}
+  \end{slidebox}
+  \vspace{0.4em}
+  #3
+  \vspace{1.2em}
+  \noindent\textcolor{dimgray!60}{\rule{\linewidth}{0.4pt}}
+  \vspace{0.6em}
+}
+
+% ── Title ──
+\title{\textbf{Presentation Script}\\[0.3em]
+\large Small Language Models for the De-identification\\
+of Italian Health Records}
+\author{Dair Sultangazy}
+\date{May 2026}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+% ===========================================================
+\section{Title and Overview}
+% ===========================================================
+
+\slidescript{Title}{Slide 1 / 15 \,·\, Phase bar: none}{
+
+Good morning. This talk is about a practical question: can a small, fine-tuned language model beat much larger zero-shot models on a real clinical NLP task?
+
+The task is de-identification of Italian health records — a legal requirement under the GDPR. Before clinical data can be shared or used for research, every piece of personally identifiable information must be redacted. Manual redaction does not scale, so automation is critical.
+
+Our starting point is a recent paper by Miranda et al.\ from the CLiC-it 2025 conference. They tested a panel of zero-shot LLMs on 80 annotated Italian clinical notes and got a best result of 0.62 macro-F1 with a 12-billion-parameter model. They explicitly noted that no fine-tuned baseline was evaluated.
+
+We fill that gap. Using a two-phase training pipeline on a 3-billion-parameter Llama model, we reach macro-F1 of 0.649 — beating the 12B zero-shot model — at one-quarter the parameter count, on a single 12\,GB consumer GPU.
+
+}
+
+% ===========================================================
+\section{Problem Definition}
+% ===========================================================
+
+\slidescript{The Problem — GDPR, Inline Redaction, PII Categories}{Slide 2 / 15 \,·\, Phase bar: none}{
+
+Let me set up the task precisely, because the output format turns out to matter a great deal.
+
+The input is a raw Italian clinical note — the kind a doctor dictates or types after a patient visit. The output is the \emph{same text} with every PII span replaced in-place by one of four typed placeholder tags.
+
+Those four tags are: \texttt{[NOME]} for names, \texttt{[ETÀ]} for age expressions, \texttt{[DATA]} for dates, and \texttt{[LUOGO/INDIRIZZO]} for locations and addresses. Nothing else changes in the text.
+
+This is called inline redaction. You can see the example on the slide: ``Il paziente Mario Rossi, di 67 anni, ricoverato a Bologna il marzo 2021'' becomes ``Il paziente [NOME], di [ETÀ] anni, ricoverato a [LUOGO/INDIRIZZO] il [DATA]''.
+
+This format has an important property: it matches the evaluation metric from Miranda et al.\ exactly, so we can make a direct head-to-head comparison. We count how many original PII spans are still present in the output (false negatives) and how many extra placeholder tags were hallucinated (false positives), and compute per-category F1 scores.
+
+}
+
+% ===========================================================
+\section{Reference Paper and the Gap}
+% ===========================================================
+
+\slidescript{What Existed — and What Was Missing}{Slide 3 / 15 \,·\, Phase bar: none}{
+
+Here is the existing zero-shot leaderboard from Miranda et al. You can see models ranging from 3B to 14B parameters. The strongest result is \texttt{gemma3:12b} at macro-F1 of 0.62.
+
+Two things are immediately visible in this table. First, ETÀ — age expressions — is the weakest category across \emph{all} models. The best zero-shot system scores only 0.14 on ETÀ. Age is expressed in too many different ways in Italian clinical prose for a general-purpose model to handle without task-specific training.
+
+Second, as I mentioned, Section~6 of the paper explicitly says fine-tuned baselines were not evaluated. That is the gap we fill.
+
+Our hypothesis is that a 3B model that has been fine-tuned specifically for this task will significantly outperform any of these zero-shot systems, including models four times its size.
+
+}
+
+% ===========================================================
+\section{Phase 1 --- Motivation}
+% ===========================================================
+
+\slidescript{Why the Base Model Needs Domain Adaptation}{Slide 4 / 15 \,·\, \phaselabel{phase1}{Phase 1 — Domain Adaptation}}{
+
+Before we can fine-tune for the redaction task, we need to address a fundamental mismatch.
+
+\texttt{meta-llama/Llama-3.2-3B} was trained predominantly on English web text. Italian clinical prose is a completely different register. It uses dense medical terminology, Latin abbreviations, passive grammatical constructions, and a wide variety of formats for writing dates and ages — dozens of surface forms for the same underlying concept.
+
+If we go straight to supervised fine-tuning on the redaction task, we force the model to solve two problems simultaneously: learn the Italian clinical register \emph{and} learn the redaction task. That is too much to ask in a few epochs with limited data.
+
+Phase~1 decouples these problems. We first adapt the model to Italian clinical language using unlabeled text — no annotation required. Only once the model is familiar with the domain do we teach it the task in Phase~2.
+
+}
+
+% ===========================================================
+\section{Phase 1 --- Procedure}
+% ===========================================================
+
+\slidescript{Continual Pre-Training on Italian Clinical Text}{Slide 5 / 15 \,·\, \phaselabel{phase1}{Phase 1 — Domain Adaptation}}{
+
+Phase~1 is continual pre-training using a causal language modeling objective — standard next-token prediction — on two publicly available Italian clinical datasets.
+
+The first is \texttt{NLP-FBK/dyspnea-clinical-notes}, a collection of Italian clinical notes focused on dyspnea. It provides authentic clinical prose at the exact register of our target domain. The second is \texttt{praiselab-picuslab/DART}, a broader Italian clinical text collection covering multiple specialties, which widens the vocabulary and stylistic range.
+
+Practically, we train a LoRA adapter on the frozen Llama-3.2-3B base weights. The adapter targets all seven linear projection layers. When Phase~1 finishes, we use \texttt{peft}'s \texttt{merge\_and\_unload} to merge the adapter directly into the base weights, producing a single clean checkpoint at \texttt{temp\_merged\_phase1/}.
+
+This merge is important. Phase~2 will apply its own fresh LoRA adapter on top of this merged model. By merging first, both phases remain fully independent — Phase~2 does not inherit any residual LoRA bookkeeping from Phase~1.
+
+}
+
+% ===========================================================
+\section{Phase 2 --- First Attempt: Wrong Output Format}
+% ===========================================================
+
+\slidescript{Starting Phase 2 — The Wrong Output Format}{Slide 6 / 15 \,·\, \phaselabel{phase2}{Phase 2 — Task Fine-Tuning}}{
+
+Phase~2 begins from the merged Phase~1 checkpoint. The first question is: how should the model format its answer?
+
+The natural NLP framing is entity extraction: have the model output a JSON object listing each entity with its text and type. This seems clean and structured. In practice, it produced macro-F1 of approximately 0.13.
+
+The model would frequently fail to close the JSON properly, and parsing the malformed output introduced downstream errors. Span offsets were inconsistent. The model was spending capacity learning to emit a structured format rather than learning the redaction task.
+
+The fix was the inline redaction format I described earlier. Instead of emitting metadata, the model outputs the full note text with PII replaced in-place. There is no parsing step — the output \emph{is} the answer. This also matches the evaluation metric directly.
+
+The key insight is: when the task is redaction, make the model a text processor, not a JSON emitter. This simple format switch moved us from 0.13 to a foundation where the real work could begin.
+
+}
+
+% ===========================================================
+\section{Phase 2 --- The Style Disaster}
+% ===========================================================
+
+\slidescript{The Most Important Finding — Style Mismatch}{Slide 7 / 15 \,·\, \phaselabel{danger}{Critical Failure}}{
+
+This slide describes what I consider the single most important empirical finding of this project.
+
+After switching to inline redaction, we generated 1000 synthetic training notes using a generic medical prompt without any reference to the gold standard. These notes were clinically plausible, but they had a slightly different prose register from the real gold notes.
+
+We trained on these synthetic notes and evaluated on the gold standard. Macro-F1: 0.18. That is \emph{lower} than the smallest zero-shot baseline, which scores 0.41.
+
+Fine-tuning actively made things \emph{worse}.
+
+When we inspected the model's outputs, the explanation became clear. The model had learned an unintended shortcut. The synthetic training notes and the gold evaluation notes had subtly different textual styles. The model learned to classify: ``synthetic-style text gets redacted; real clinical text gets left alone.'' Since the gold evaluation notes looked like the ``real'' side of this division, the model simply left them untouched.
+
+This is a transferable lesson for anyone building low-resource NLP systems with LLM-generated training data. Mismatched synthetic data does not just fail to help — it actively teaches the wrong thing.
+
+}
+
+% ===========================================================
+\section{Phase 2 --- Style Anchoring Pipeline}
+% ===========================================================
+
+\slidescript{The Fix — Style-Anchored Synthetic Data}{Slide 8 / 15 \,·\, \phaselabel{phase2}{Phase 2 — Synthetic Data Pipeline}}{
+
+The fix is conceptually simple: condition the generator on the target style.
+
+Every Gemini~2.5 Flash generation call now receives three real gold notes as few-shot style examples. These are rotated across batches to cover notes of different lengths. This forces Gemini to generate text in the same register as the gold standard, which is also the register of the evaluation set.
+
+After generation, every synthetic note must pass four hard validation rules before it is accepted. The entity texts must appear literally in the input. Those same texts must be absent from the redacted output. Every entity type must have a matching placeholder tag. And the note must have at least two valid entities and fall within a 1000--4000 character length range.
+
+The generator also enforces per-batch diversity: it rotates across 10 medical specialties, two genders, three age ranges, and three entity-density levels.
+
+The total cost for approximately 1700 valid training notes: about \$15 in Gemini API credits. This style-anchored pipeline moved macro-F1 from 0.18 to 0.49 — a gain of 0.31 from fixing the generation style alone.
+
+}
+
+% ===========================================================
+\section{Phase 2 --- The NOME Distribution Problem}
+% ===========================================================
+
+\slidescript{The NOME Over-Representation Problem}{Slide 9 / 15 \,·\, \phaselabel{phase2}{Phase 2 — Distribution Fix}}{
+
+After fixing the style, we hit another problem: the model was hallucinating patient name tags on notes that contained no names.
+
+The cause was a distributional mismatch. The gold standard has 0.58 NOME entities per note — names are relatively rare. The first style-anchored synthetic dataset had 2.38 NOME entities per note — four times higher. Gemini, when asked to generate clinical notes, naturally includes patient names in almost every note.
+
+The model learned this pattern. During training, almost every note had a name. During evaluation, many gold notes did not. The model assumed names were always present.
+
+The fix was a second generator, \texttt{generate\_noname.py}, which explicitly instructs Gemini to refer to patients only through anonymous descriptors: \emph{la paziente}, \emph{l'uomo}, \emph{il soggetto}, \emph{il paziente}. Any output containing a NOME entity is hard-rejected by the validator.
+
+Adding 475 name-free cases to the training mix moved NOME F1 from 0.36 to 0.71.
+
+The broader lesson is that distribution correction is as important as style correction. Entity frequency in synthetic data must mirror the target distribution. This effect is predictable and fixable once identified.
+
+}
+
+% ===========================================================
+\section{Phase 2 --- Model and Training Configuration}
+% ===========================================================
+
+\slidescript{QLoRA Configuration and Training Hyperparameters}{Slide 10 / 15 \,·\, \phaselabel{phase2}{Phase 2 — Model \& Training Setup}}{
+
+Let me briefly cover the model configuration, since these choices were constrained by the 12\,GB VRAM budget of a consumer GPU.
+
+We load the Phase~1 merged checkpoint in 4-bit NF4 quantization using the QLoRA approach from Dettmers et al. NF4 quantization is specifically designed for normally-distributed weight tensors, which makes it more accurate than standard int4 for transformer weights. Double quantization further reduces the memory footprint of the quantization constants.
+
+On top of the quantized base, we apply a fresh LoRA adapter with rank~16, alpha~32, and a dropout of 0.05. The adapter targets all seven linear projection layers — query, key, value, output, and the three MLP projections. This yields approximately 52 million trainable parameters, which is 1.7\% of the full model size.
+
+Training uses the \texttt{SFTTrainer} from the \texttt{trl} library with the Llama-3 chat template, assistant-tokens-only loss. Key hyperparameters: 2 epochs, effective batch size 16, learning rate $5\times10^{-5}$ with a cosine schedule and 50-step warmup, maximum sequence length 1536 tokens.
+
+One implementation detail worth noting: inference requires both Llama-3 end-of-sequence tokens in the stop list. Llama-3 has two distinct termination tokens, and omitting either one causes runaway generation on a non-trivial fraction of test notes.
+
+}
+
+% ===========================================================
+\section{Iteration History and Final v4 Results}
+% ===========================================================
+
+\slidescript{The Full Development Arc and Final Results}{Slide 11 / 15 \,·\, \phaselabel{results}{Results}}{
+
+The left side of this slide shows the full development arc. We went through five configurations, each solving one problem.
+
+Version~0 used JSON extraction and scored 0.13. Version~1 switched to inline redaction and improved to 0.18 — but this is still below zero-shot because the synthetic data was stylistically mismatched. Version~2 introduced style-anchored generation and jumped to 0.49. Version~3 added the name-free generator with 878 synthetic samples, reaching $0.535 \pm 0.144$ — the high variance here reflects a catastrophic fold collapse where one fold scored only 0.29. Version~4 doubled the synthetic volume to 1676 samples; the mean rose to 0.649 and the standard deviation halved to 0.073, recovering the catastrophic fold.
+
+The right side shows the final per-category breakdown. LUOGO/INDIRIZZO performs best at 0.790 — the model learns location names reliably. NOME reaches 0.714 after the distribution fix. ETÀ and DATA are the weakest categories at 0.554 and 0.536, reflecting the high variability of Italian age expressions and date formats.
+
+More style-matched synthetic data primarily stabilizes variance rather than pushing the mean. But reducing that variance is itself valuable — it means the model is reliable across different note styles, not just lucky on easy folds.
+
+}
+
+% ===========================================================
+\section{Full Leaderboard Comparison}
+% ===========================================================
+
+\slidescript{Full Leaderboard vs.\ Miranda et al.\ Zero-Shot Panel}{Slide 12 / 15 \,·\, \phaselabel{results}{Results — Comparison}}{
+
+This is the full comparison table. All zero-shot rows come directly from Miranda et al. on the same 80-note gold standard. Our rows are 5-fold cross-validation means.
+
+Looking at the zero-shot models: the best is \texttt{gemma3:12b} at 0.620. It has the highest NOME recall (0.81) and the highest LUOGO precision (0.88), but it scores only 0.14 on ETÀ — the lowest of any model tested. This is a clear failure mode of the zero-shot approach on age expressions.
+
+Our fine-tuned Llama-3.2-3B reaches 0.649, beating the 12B zero-shot best by 0.029. On ETÀ specifically, we score 0.554 versus 0.14 — that is a gain of 0.414 on the category where zero-shot models are most deficient.
+
+We also ran the same two-phase pipeline on Gemma-3~1B. That smaller model reaches 0.611, which is within 0.009 of the 12B zero-shot result. A one-billion-parameter fine-tuned model nearly matches a twelve-billion-parameter zero-shot model, at twelve times fewer parameters.
+
+The headline takeaway: fine-tuning with style-anchored synthetic data closes the scale gap entirely for this type of narrow, well-defined NLP task.
+
+}
+
+% ===========================================================
+\section{Cross-Architecture: Gemma-3 1B}
+% ===========================================================
+
+\slidescript{Cross-Architecture Test — Gemma-3 1B}{Slide 13 / 15 \,·\, \phaselabel{results}{Results — Cross-Architecture}}{
+
+To check whether our pipeline quality is tied to the Llama architecture, we ran the identical two-phase procedure on Gemma-3~1B — a different model family at one-third the parameter count.
+
+The Gemma-3~1B per-fold macros were 0.613, 0.739, 0.722, 0.512, and 0.468, giving an aggregate of $0.611 \pm 0.109$.
+
+Comparing the two architectures category by category: Gemma-3~1B is notably stronger on ETÀ at 0.745 — the highest ETÀ score of any system tested in this study. Gemma's instruction-tuning appears to have been done on data that includes Italian age expressions, and Phase~2 amplifies this existing strength. However, Gemma-3~1B is weaker on LUOGO, scoring 0.523 versus 0.790 for the 3B Llama.
+
+Variance is higher for the 1B model ($\pm 0.109$ versus $\pm 0.073$), and fold~5 had a DATA collapse with all four real dates missed.
+
+The key finding here is that the pipeline generalizes across architectures. A 1B fine-tuned model is competitive with the best zero-shot 12B model, at one-twelfth the inference cost.
+
+}
+
+% ===========================================================
+\section{Out-of-Distribution Generalization}
+% ===========================================================
+
+\slidescript{Out-of-Distribution Test — Kazakh Entities in Italian Notes}{Slide 14 / 15 \,·\, \phaselabel{results}{Results — Robustness}}{
+
+One concern with training on Italian-language data is that the model might be memorizing surface forms — Italian names, Italian city names — rather than learning a genuine concept of personally identifiable information.
+
+To test this, we took gold note~0 and replaced all entity values with Central Asian counterparts. The Italian patient name became \emph{Yusuf}. Bologna became \emph{Almaty}. The real hospital was replaced with an invented institution, \emph{Istituto Saryarka}. The date was changed to October 2034. Further substitutions replaced Trieste with Tashkent and the institution abbreviation ASUGI with KAZMU.
+
+None of these strings appear anywhere in the training data.
+
+We ran the model on this modified note. Recall on all eight substituted entities: 1.000. Every foreign name, every Central Asian city, every invented institutional abbreviation was tagged to the correct placeholder type.
+
+This confirms that the model has learned what personally identifiable information \emph{is} — not just what Italian names and locations look like. The approach generalizes beyond the language of the training data.
+
+}
+
+% ===========================================================
+\section{Conclusion}
+% ===========================================================
+
+\slidescript{Three Findings That Stand Independent of the Headline Number}{Slide 15 / 15 \,·\, \phaselabel{results}{Conclusion}}{
+
+I want to close with the three findings I think are most transferable to anyone building a similar system.
+
+\textbf{First: style transfer matters more than volume.} Training on stylistically incompatible synthetic data produced F1 of 0.18 — worse than no training at all. Getting the style right costs about ten dollars in API credits and is the single largest lever in the pipeline. If you take away one practical rule from this talk, it is: when you use an LLM to generate training data, always anchor the generator to real examples of your target distribution.
+
+\textbf{Second: entity distribution must be controlled.} A four-fold over-representation of names in synthetic data caused the model to hallucinate name tags everywhere. Adding 475 name-free examples moved NOME F1 from 0.36 to 0.71. The effect is predictable once you know to look for it.
+
+\textbf{Third: more style-matched data primarily reduces variance.} Doubling the synthetic volume halved the cross-validation standard deviation and recovered a catastrophic fold collapse. Style-matched volume has diminishing returns on the mean, but continuing returns on stability.
+
+The headline result: a 3B fine-tuned model beats the best 12B zero-shot model from Miranda et al., and a 1B fine-tuned model nearly matches it — on a 12\,GB consumer GPU for about fifteen dollars in data generation costs.
+
+Code, training scripts, result JSONs, and the full synthetic data pipeline are available in the project repository. Thank you.
+
+}
+
+\end{document}

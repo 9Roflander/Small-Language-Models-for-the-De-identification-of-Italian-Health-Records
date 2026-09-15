@@ -1,0 +1,65 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>10 · Model Config</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar ph2"></div>
+<div class="slide top">
+  <div class="tag t-p2">Phase 2 — Model &amp; Training Setup</div>
+  <h2>QLoRA configuration and training hyperparameters</h2>
+
+  <div class="g2 mt12">
+    <div>
+      <div class="card cp2">
+        <h3>Quantization (QLoRA)</h3>
+        <div style="margin-top:12px;background:var(--surface2);border-radius:6px;padding:13px;font-family:'SF Mono',monospace;font-size:13px;color:var(--pur);line-height:1.7;">
+          BitsAndBytesConfig(<br>
+          &nbsp;&nbsp;load_in_4bit=True,<br>
+          &nbsp;&nbsp;bnb_4bit_quant_type="nf4",<br>
+          &nbsp;&nbsp;bnb_4bit_compute_dtype=bfloat16,<br>
+          &nbsp;&nbsp;bnb_4bit_use_double_quant=True,<br>
+          )
+        </div>
+        <p class="mt12" style="font-size:13px;color:var(--muted);">Keeps 12 GB VRAM budget for the merged Phase 1 base.</p>
+      </div>
+
+      <div class="card mt14">
+        <h3>LoRA adapter (fresh per Phase 2)</h3>
+        <table style="margin-top:10px;font-size:14px;">
+          <tbody>
+            <tr><td style="color:var(--dim);">Rank</td><td style="color:var(--text);font-weight:600;">16</td></tr>
+            <tr><td style="color:var(--dim);">Alpha</td><td style="color:var(--text);font-weight:600;">32</td></tr>
+            <tr><td style="color:var(--dim);">Dropout</td><td style="color:var(--text);font-weight:600;">0.05</td></tr>
+            <tr><td style="color:var(--dim);">Target layers</td><td style="color:var(--pur);font-weight:600;font-size:11px;">q k v o gate up down proj</td></tr>
+            <tr><td style="color:var(--dim);">Trainable params</td><td style="color:var(--text);font-weight:600;">~52 M (1.7 %)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="border-top:2px solid var(--res);">
+        <h3>Training hyperparameters</h3>
+        <table style="margin-top:10px;font-size:14px;">
+          <tbody>
+            <tr><td style="color:var(--dim);">Epochs</td><td style="color:var(--text);font-weight:600;">2</td></tr>
+            <tr><td style="color:var(--dim);">Effective batch</td><td style="color:var(--text);font-weight:600;">16 (grad accum 16)</td></tr>
+            <tr><td style="color:var(--dim);">Learning rate</td><td style="color:var(--text);font-weight:600;">5 × 10⁻⁵</td></tr>
+            <tr><td style="color:var(--dim);">LR schedule</td><td style="color:var(--text);font-weight:600;">cosine, 50-step warmup</td></tr>
+            <tr><td style="color:var(--dim);">Max seq length</td><td style="color:var(--text);font-weight:600;">1536 tokens</td></tr>
+            <tr><td style="color:var(--dim);">Precision</td><td style="color:var(--text);font-weight:600;">bfloat16 mixed</td></tr>
+            <tr><td style="color:var(--dim);">Loss target</td><td style="color:var(--text);font-weight:600;">assistant tokens only</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout orange mt14" style="font-size:14px;">
+        <strong>Inference:</strong> greedy decoding (<code>do_sample=False</code>), both Llama-3 EOS tokens in stop list — omitting either causes runaway generation on a non-trivial fraction of test notes.
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="09.html">← Prev</a>
+  <span class="nav-center">10 / 15</span>
+  <a href="11.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='11.html';if(e.key==='ArrowLeft')location.href='09.html';});</script>
+</body></html>

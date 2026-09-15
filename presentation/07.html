@@ -1,0 +1,45 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>07 · Style Disaster</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar ph2"></div>
+<div class="slide top">
+  <div class="tag t-red">Phase 2 — Critical Failure</div>
+  <h2>The style disaster: mismatched synthetic data</h2>
+  <p class="lead">The first synthetic dataset (no style reference) produced a catastrophic result.</p>
+
+  <div class="g2 mt20">
+    <div>
+      <div class="card cred" style="text-align:center;padding:28px;">
+        <div class="stat sred">0.18</div>
+        <div class="sl mt8">Macro-F1 on mismatched<br>synthetic training data</div>
+        <div style="height:1px;background:var(--border);margin:16px 0;"></div>
+        <p style="font-size:13px;">Worse than the <em>smallest</em> zero-shot baseline (0.41).<br>Fine-tuning made things actively <em>worse</em>.</p>
+      </div>
+      <div class="card mt16">
+        <h3>What the model actually learned</h3>
+        <p class="mt8">It learned a shortcut classifier:</p>
+        <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
+          <div style="background:rgba(247,129,102,.08);border:1px solid rgba(247,129,102,.2);border-radius:6px;padding:12px 16px;font-size:14px;">
+            <span style="color:var(--red);font-weight:600;">Synthetic-style text</span> → redact it
+          </div>
+          <div style="background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);border-radius:6px;padding:12px 16px;font-size:14px;">
+            <span style="color:var(--p2);font-weight:600;">Real clinical text (gold style)</span> → leave it alone
+          </div>
+        </div>
+        <p class="mt12" style="font-size:13px;">Gold notes looked real, so the model left them untouched.</p>
+      </div>
+    </div>
+    <div>
+      <div class="callout red">
+        <strong>The most important finding in this project:</strong><br><br>
+        Mismatched synthetic data does not just fail to help — it actively degrades the model. Training on the wrong style is worse than no training at all.
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="06.html">← Prev</a>
+  <span class="nav-center">7 / 15</span>
+  <a href="08.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='08.html';if(e.key==='ArrowLeft')location.href='06.html';});</script>
+</body></html>

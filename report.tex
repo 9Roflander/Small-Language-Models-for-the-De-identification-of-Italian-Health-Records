@@ -43,7 +43,7 @@ Zero-Shot 12B Models on the CLiC-it 2025 Benchmark}
 
 \begin{abstract}
 \noindent
-We fine-tune \texttt{meta-llama/Llama-3.2-3B} with LoRA in 4-bit NF4 quantization for GDPR-compliant de-identification of Italian clinical notes, targeting four PII categories: \textbf{NOME} (names), \textbf{ETÀ} (age), \textbf{DATA} (dates), and \textbf{LUOGO/INDIRIZZO} (locations/addresses). Under rigorous 5-fold cross-validation on the same 80-note gold standard used by Miranda et al.\ \cite{miranda2025mamma}, our model achieves macro-F1 of $0.649 \pm 0.073$, exceeding the paper's best zero-shot baseline (\texttt{gemma3:12b}, 0.620) with a model 4$\times$ smaller running on a single 12\,GB consumer GPU. We further show that a 1B-parameter Gemma-3 fine-tuned with the same pipeline matches the 12B zero-shot result (macro-F1 $= 0.611$), at 12$\times$ fewer parameters. The methodological contribution is a style-anchored synthetic data pipeline using Gemini 2.5 Flash, and the empirical finding that synthetic-data style transfer matters more than synthetic-data volume: training on stylistically-mismatched synthetic data produces F1 $= 0.18$ — \textit{worse than zero-shot}.
+GDPR-compliant de-identification of Italian clinical notes is a low-resource NLP task where general-purpose models tend to struggle without task-specific training. This paper shows that a fine-tuned 3B-parameter model, running on a single consumer GPU, can beat zero-shot 12B models on this task. Starting from \texttt{meta-llama/Llama-3.2-3B} with LoRA in 4-bit NF4 quantization, we target four PII categories: \textbf{NOME} (names), \textbf{ETÀ} (age), \textbf{DATA} (dates), and \textbf{LUOGO/INDIRIZZO} (locations/addresses). Under 5-fold cross-validation on the same 80-note gold standard used by Miranda et al.\ \cite{miranda2025mamma}, the model reaches macro-F1 of $0.649 \pm 0.073$, beating their best zero-shot result (\texttt{gemma3:12b}, 0.620) with a model 4$\times$ smaller running on a single 12\,GB card. Applying the same pipeline to a 1B Gemma-3 matches the 12B zero-shot result (macro-F1 $= 0.611$) at 12$\times$ fewer parameters. The central methodological contribution is a style-anchored synthetic data pipeline built on Gemini 2.5 Flash. The most important empirical finding is that style matters far more than volume: training on stylistically mismatched synthetic data collapsed F1 to $0.18$ — \textit{worse than zero-shot}.
 \end{abstract}
 
 % ===================================================================
@@ -53,13 +53,13 @@ We fine-tune \texttt{meta-llama/Llama-3.2-3B} with LoRA in 4-bit NF4 quantizatio
 
 \subsection{Reference benchmark and gold standard}
 
-We benchmark against Miranda et al.\ \cite{miranda2025mamma}, the most recent published work on Italian clinical de-identification. Their setup uses 80 manually-annotated clinical notes derived from the CLinkaRT/E3C Italian clinical corpus and evaluates a panel of zero-shot LLMs (\texttt{llama3.2:3b}, \texttt{gemma3:1b/4b/12b}, \texttt{mistral:7b}, \texttt{phi4:14b}) on four PII categories. Their best result is \texttt{gemma3:12b} at macro-F1 $= 0.62$ under a deterministic placeholder-count metric. They explicitly note (§6 Limitations) that fine-tuned baselines were not evaluated, which is the gap this work addresses.
+Miranda et al.\ \cite{miranda2025mamma} is the most recent published work on Italian clinical de-identification and serves as our primary reference. Their setup covers 80 manually-annotated clinical notes from the CLinkaRT/E3C Italian clinical corpus, evaluated against a panel of zero-shot LLMs (\texttt{llama3.2:3b}, \texttt{gemma3:1b/4b/12b}, \texttt{mistral:7b}, \texttt{phi4:14b}) across four PII categories. The best result is \texttt{gemma3:12b} at macro-F1 $= 0.62$ under a deterministic placeholder-count metric. Section 6 of that paper explicitly notes that fine-tuned baselines were not evaluated — this work addresses that gap directly.
 
-The 80-note gold standard (\texttt{data/gold\_standard\_80.json}) is the same dataset used by the reference paper. Each note contains a free-text clinical narrative and a list of annotated entities with type and surface form. Across the 80 notes there are 46 NOME, 89 ETÀ, 78 DATA, and 142 LUOGO/INDIRIZZO entities — a moderately imbalanced distribution that favors locations and disfavors names.
+The 80-note gold standard (\texttt{data/gold\_standard\_80.json}) is the identical dataset used by the reference paper. Each note contains a free-text clinical narrative with a list of annotated entities typed by category and surface form. Across the full set there are 46 NOME, 89 ETÀ, 78 DATA, and 142 LUOGO/INDIRIZZO entities — a moderately imbalanced distribution that favors locations and under-represents names.
 
 \subsection{Synthetic training data}
 
-The 80 gold notes are far too few to fine-tune a 3B-parameter model on their own. We built a custom synthetic data pipeline using Gemini 2.5 Flash, conditioned on real gold notes as style anchors, to generate~$\sim$1700 valid synthetic clinical narratives at a total API cost of $\sim$\$15.
+Eighty notes are far too few to fine-tune a 3B-parameter model from scratch. To compensate, we built a synthetic data pipeline using Gemini 2.5 Flash, conditioned on real gold notes as style anchors, which produced $\sim$1700 valid synthetic clinical narratives at a total API cost of $\sim$\$15.
 
 The final training dataset combines four sources (Table \ref{tab:data-sources}).
 
@@ -84,7 +84,7 @@ Source & Records & Purpose \\
 \end{table}
 
 \paragraph{Quality controls on synthetic generation.}
-Each generation call provided Gemini with three real gold notes as few-shot anchors (rotated across batches to cover short, medium, and long examples), an explicit response schema (\texttt{response\_schema}) forcing JSON structure, and per-batch diversity rotation (medical specialty, gender, age range, entity density). Every generated case is validated to satisfy:
+Each Gemini call received three real gold notes as few-shot anchors (rotated across batches to cover short, medium, and long examples), an explicit response schema (\texttt{response\_schema}) enforcing JSON structure, and per-batch diversity rotation across medical specialty, gender, age range, and entity density. Every generated case must satisfy:
 \begin{itemize}[leftmargin=*,topsep=2pt,itemsep=0pt]
 \item Every entity in \texttt{entities} appears as a literal substring in \texttt{text};
 \item No entity text appears in \texttt{redacted\_text} (proper redaction);
@@ -95,7 +95,7 @@ Pass rates were 77\% for with-names generation and 71\% for the more constrained
 
 \subsection{The NOME over-representation problem}
 
-A naive synthetic dataset contained 1{,}485 NOME entities across 624 cases (2.38 names/note), versus only 46 across 80 gold notes (0.58/note) — a 4$\times$ over-representation. This induced spurious NOME redactions during inference. We addressed this with an explicitly name-free synthetic generator (\texttt{generate\_noname.py}) that prompts Gemini to refer to patients only by anonymous descriptors (\textit{la paziente}, \textit{l'uomo}, \textit{il soggetto}) and rejects any output containing a NOME entity. Adding 475 name-free cases moved NOME F1 from 0.36 to 0.71 under cross-validation.
+An early synthetic dataset contained 1{,}485 NOME entities across 624 cases (2.38 names/note), against only 46 across 80 gold notes (0.58/note) — a 4$\times$ over-representation. In practice, this pushed the model to generate spurious NOME redactions during inference. The fix was an explicitly name-free synthetic generator (\texttt{generate\_noname.py}) that instructs Gemini to refer to patients only through anonymous descriptors (\textit{la paziente}, \textit{l'uomo}, \textit{il soggetto}) and rejects any output containing a NOME entity. Adding 475 such name-free cases moved NOME F1 from 0.36 to 0.71 under cross-validation.
 
 % ===================================================================
 \section{Methods}
@@ -104,16 +104,16 @@ A naive synthetic dataset contained 1{,}485 NOME entities across 624 cases (2.38
 
 \subsection{Task formulation}
 
-We adopt the same inline redaction task as the reference paper:
+The task follows the same inline redaction format as the reference paper:
 \begin{quote}
 \textit{Input:} a clinical note (Italian, free text).\\
 \textit{Output:} the same note with every PII span replaced inline by one of the four placeholder tags \texttt{[NOME]}, \texttt{[ETÀ]}, \texttt{[DATA]}, \texttt{[LUOGO/INDIRIZZO]}.
 \end{quote}
-This format matches the paper's evaluation metric, enabling head-to-head comparison without re-engineering the scorer.
+This format is a deliberate choice: it matches the paper's evaluation metric exactly, so results are directly comparable without re-engineering the scorer.
 
 \subsection{Model and quantization}
 
-The base is \texttt{meta-llama/Llama-3.2-3B}. We apply a Phase 1 LoRA adapter (continual pre-training on \texttt{NLP-FBK/dyspnea-clinical-notes} + \texttt{praiselab-picuslab/DART}) and merge it into the base weights before Phase 2. The merged model is loaded in 4-bit NF4 quantization with \texttt{bitsandbytes}:
+The base model is \texttt{meta-llama/Llama-3.2-3B}. A Phase 1 LoRA adapter (continual pre-training on \texttt{NLP-FBK/dyspnea-clinical-notes} + \texttt{praiselab-picuslab/DART}) is merged into the base weights before Phase 2. The merged model is loaded in 4-bit NF4 quantization via \texttt{bitsandbytes}:
 
 \begin{lstlisting}
 BitsAndBytesConfig(
@@ -124,11 +124,11 @@ BitsAndBytesConfig(
 )
 \end{lstlisting}
 
-Phase 2 fine-tuning uses LoRA with rank 16 (\(\alpha = 32\), dropout 0.05) targeting all seven linear projections of the attention and MLP blocks: \texttt{q\_proj, k\_proj, v\_proj, o\_proj, gate\_proj, up\_proj, down\_proj}. Trainable parameters: $\sim$52M (1.7\% of the base).
+Phase 2 fine-tuning uses LoRA with rank 16 (\(\alpha = 32\), dropout 0.05) targeting all seven linear projections of the attention and MLP blocks: \texttt{q\_proj, k\_proj, v\_proj, o\_proj, gate\_proj, up\_proj, down\_proj}. This yields $\sim$52M trainable parameters, or 1.7\% of the base.
 
 \subsection{Training configuration}
 
-Training uses Hugging Face \texttt{trl.SFTTrainer} with chat-templated multi-turn conversations (\texttt{system}, \texttt{user}, \texttt{assistant}). The Llama-3 chat template is augmented with \texttt{\{\% generation \%\}} markers so that \texttt{assistant\_only\_loss=True} restricts the loss to assistant tokens only. Key hyperparameters appear in Table \ref{tab:hyperparams}.
+Training runs through Hugging Face \texttt{trl.SFTTrainer} with chat-templated multi-turn conversations (\texttt{system}, \texttt{user}, \texttt{assistant}). The Llama-3 chat template is augmented with \texttt{\{\% generation \%\}} markers so that \texttt{assistant\_only\_loss=True} restricts the loss to assistant tokens only. Key hyperparameters appear in Table \ref{tab:hyperparams}.
 
 \begin{table}[h]
 \centering
@@ -154,21 +154,21 @@ Max grad norm & 1.0 \\
 
 \subsection{Inference}
 
-Generation uses greedy decoding (\texttt{do\_sample=False}), \texttt{repetition\_penalty=1.0}, and EOS-token list \texttt{[end\_of\_text, eot\_id]} (Llama-3 has two distinct end tokens — setting both prevents runaway generation). \texttt{max\_new\_tokens} is set to 1024, sufficient for the longest redacted notes ($\sim$3000 characters).
+Generation uses greedy decoding (\texttt{do\_sample=False}), \texttt{repetition\_penalty=1.0}, and EOS-token list \texttt{[end\_of\_text, eot\_id]}. Llama-3 has two distinct end tokens — supplying both is necessary to prevent runaway generation. \texttt{max\_new\_tokens} is set to 1024, enough to cover the longest redacted notes in the dataset ($\sim$3000 characters).
 
 \subsection{Evaluation metric}
 
-We adopt the deterministic placeholder-count metric from Miranda et al.\ \cite{miranda2025mamma} verbatim. For each entity category $T$ in the gold annotations, given a model's redacted output $R$:
+The evaluation follows the deterministic placeholder-count metric from Miranda et al.\ \cite{miranda2025mamma} verbatim. For each entity category $T$ in the gold annotations, given a model's redacted output $R$:
 \begin{align*}
 \text{FN}(T) &= \#\{e : e \in \text{gold}(T) \,\land\, e \text{ still appears in } R\} \\
 \text{TP}(T) &= |\text{gold}(T)| - \text{FN}(T) \\
 \text{FP}(T) &= \max\big(0,\; \#\big[\texttt{[T]}\big] \text{ in } R - |\text{gold}(T)|\big)
 \end{align*}
-Per-category precision/recall/F1 are computed standardly; \textbf{macro-F1} is the unweighted mean across the four categories. This metric is favorable to redaction-style outputs: it counts placeholders rather than spans, so imperfect boundary placement still scores correctly.
+Per-category precision/recall/F1 are computed standardly; \textbf{macro-F1} is the unweighted mean across the four categories. This metric is lenient about boundary placement — it counts placeholder tags rather than exact spans, so a correct redaction with slightly off character offsets still scores correctly.
 
 \subsection{Cross-validation protocol}
 
-We use \texttt{sklearn.model\_selection.KFold} with \texttt{n\_splits=5, shuffle=True, random\_state=42}. Each fold consists of 64 training and 16 test gold notes; all synthetic and CRF data is shared across folds. Per-fold and aggregated (mean $\pm$ std) statistics are reported. Total CV wall-clock: $\sim$6 hours on RTX 4070 Ti.
+Cross-validation uses \texttt{sklearn.model\_selection.KFold} with \texttt{n\_splits=5, shuffle=True, random\_state=42}. Each fold trains on 64 gold notes and tests on 16; all synthetic and CRF data is shared across folds. Per-fold and aggregated (mean $\pm$ std) statistics are reported. Full 5-fold wall-clock time: $\sim$6 hours on an RTX 4070 Ti.
 
 \subsection{Software stack}
 
@@ -188,17 +188,17 @@ Hardware: single NVIDIA RTX 4070 Ti (12\,GB).
 
 \subsection{Iteration timeline}
 
-The path to the final result corrected four distinct issues:
+Getting to the final result required fixing four distinct problems in sequence:
 \begin{enumerate}[leftmargin=*,topsep=2pt,itemsep=0pt]
-\item \textbf{Wrong task format} (JSON extraction $\to$ inline redaction): the JSON-output format yielded macro-F1 $\approx 0.13$ due to fragile parsing and the model never reliably emitting EOS.
-\item \textbf{Wrong synthetic data style} (original \texttt{synthetic\_clinical\_1000.json} was stylistically incompatible with gold).
-\item \textbf{Wrong entity distribution} (4$\times$ NOME over-representation in synthetic data).
-\item \textbf{Insufficient synthetic volume} (v3 with 878 samples yielded macro 0.535 $\pm$ 0.144; doubling to v4's 1{,}676 samples yielded 0.649 $\pm$ 0.073).
+\item \textbf{Wrong task format} (JSON extraction $\to$ inline redaction): the JSON-output format yielded macro-F1 $\approx 0.13$, mainly because the model never reliably emitted EOS and entity parsing was fragile.
+\item \textbf{Wrong synthetic data style}: the original \texttt{synthetic\_clinical\_1000.json} was stylistically incompatible with the gold notes.
+\item \textbf{Wrong entity distribution}: NOME was over-represented 4$\times$ in synthetic data relative to gold.
+\item \textbf{Insufficient synthetic volume}: v3 at 878 samples yielded macro $0.535 \pm 0.144$; doubling to v4's 1{,}676 samples brought it to $0.649 \pm 0.073$.
 \end{enumerate}
 
 \subsection{Control experiment: synthetic style mismatch}
 
-We trained on \texttt{synthetic\_clinical\_1000.json} + CRF (no gold) and evaluated on all 80 gold. The result: macro-F1 $= 0.18$, worse than the smallest zero-shot baseline. Inspecting outputs revealed the model had learned ``synthetic-style $\to$ redact; real-style $\to$ leave alone'' — gold notes were classified as real-style and ignored. \textbf{Synthetic data style must match the gold distribution, or fine-tuning actively harms the model.} This is the most important finding of this work for practitioners using small LLMs in low-resource clinical NLP.
+To quantify the effect of style mismatch, we trained on \texttt{synthetic\_clinical\_1000.json} + CRF data (no gold notes) and evaluated on all 80 gold. The result was macro-F1 $= 0.18$ — worse than the smallest zero-shot baseline. Looking at the model's outputs made the issue obvious: it had learned something like ``synthetic-style $\to$ redact; real-style $\to$ leave alone'', and the gold notes read as real-style. \textbf{Mismatched synthetic data does not just fail to help — it actively degrades the model.} For practitioners working with small LLMs in low-resource clinical NLP, this is probably the most practically important finding in this paper.
 
 \subsection{Final 5-fold cross-validation result (v4)}
 
@@ -224,7 +224,7 @@ LUOGO/INDIRIZZO   & $0.914 \pm 0.171$ & $0.700 \pm 0.130$ & $\mathbf{0.790 \pm 0
 
 \subsection{Comparison with the reference paper}
 
-Table \ref{tab:leaderboard} shows our results against the paper's zero-shot panel.
+Table \ref{tab:leaderboard} places our results alongside the paper's zero-shot panel.
 
 \begin{table}[h]
 \centering
@@ -249,7 +249,7 @@ phi4:14b (paper)      & 14B & 0.44 & 0.23 & 0.33 & 0.55 & 0.39 \\
 \paragraph{Per-category vs paper's best (\texttt{gemma3:12b}):}
 \begin{itemize}[leftmargin=*,topsep=2pt,itemsep=0pt]
 \item ETÀ: $+0.144$ (clean win)
-\item NOME: $-0.10$ (gap closed from $-0.31$ in v3 by adding name-free synthetic)
+\item NOME: $-0.10$ (gap narrowed from $-0.31$ in v3 by adding name-free synthetic)
 \item DATA: $-0.11$
 \item LUOGO: $-0.09$
 \item \textbf{Macro: $+0.029$ — paper beaten, with 4$\times$ fewer parameters.}
@@ -257,11 +257,11 @@ phi4:14b (paper)      & 14B & 0.44 & 0.23 & 0.33 & 0.55 & 0.39 \\
 
 \subsection{Volume vs.\ style: variance reduction by scaling synthetic data}
 
-v3 used 878 synthetic samples and reached macro $0.535 \pm 0.144$. v4 doubled this to 1{,}676 samples (same generator, same style) and reached $0.649 \pm 0.073$ — a $+0.114$ shift in mean and a halving of the standard deviation. The catastrophic fold-5 collapse in v3 (macro $= 0.291$) recovered to $0.644$ in v4. This indicates style-anchored synthetic data still has marginal value through at least 1{,}700 samples for variance reduction.
+v3 used 878 synthetic samples and reached macro $0.535 \pm 0.144$. Doubling to 1{,}676 samples in v4 — same generator, same style — pushed the mean to $0.649$ and cut the standard deviation roughly in half to $0.073$. The catastrophic fold-5 collapse in v3 (macro $= 0.291$) recovered to $0.644$ in v4. The takeaway is that more style-matched synthetic data still pays off through at least 1{,}700 samples, primarily by stabilizing variance rather than pushing the mean.
 
 \subsection{Cross-architecture comparison: Gemma-3 1B}
 
-To isolate architecture vs.\ method effects, we ran the identical v4 pipeline on \texttt{google/gemma-3-1b-it} (1B parameters, 3$\times$ smaller than our Llama base). Per-fold macros: $[0.613, 0.739, 0.722, 0.512, 0.468]$. Aggregated:
+To separate architecture effects from pipeline effects, the identical v4 pipeline was run on \texttt{google/gemma-3-1b-it} (1B parameters, 3$\times$ smaller than the Llama base). Per-fold macros: $[0.613, 0.739, 0.722, 0.512, 0.468]$. Aggregated:
 
 \begin{table}[h]
 \centering
@@ -283,19 +283,19 @@ LUOGO/INDIRIZZO   & $0.767 \pm 0.200$ & $0.437 \pm 0.211$ & $0.523 \pm 0.199$ \\
 
 \paragraph{Key observations.}
 \begin{enumerate}[leftmargin=*,topsep=2pt,itemsep=0pt]
-\item A \textbf{1B fine-tuned model matches a 12B zero-shot model} (0.611 vs.\ 0.620), at 12$\times$ fewer parameters.
-\item Gemma-3 1B reaches \textbf{ETÀ F1 $= 0.745$} — the highest of any system tested in this work, beating Llama-3.2-3B's 0.554 by $+0.19$. Gemma's instruction-tuning baseline is already well-calibrated on Italian age expressions, and fine-tuning amplifies that.
+\item A \textbf{1B fine-tuned model matches a 12B zero-shot model} (0.611 vs.\ 0.620) at 12$\times$ fewer parameters.
+\item Gemma-3 1B hits \textbf{ETÀ F1 $= 0.745$} — the highest of any system in this work, beating Llama-3.2-3B's 0.554 by $+0.19$. Gemma's instruction-tuning appears already well-calibrated on Italian age expressions, and fine-tuning amplifies this.
 \item Variance is higher than Llama (std 0.109 vs.\ 0.073). Fold 5 collapsed on DATA (F1 $= 0.000$): the model emitted 3 false-positive DATA tags and missed all 4 real dates. Smaller models are more sensitive to fold composition.
-\item LUOGO is weaker than the 3B Llama (0.523 vs.\ 0.790) — fewer parameters available to memorize Italian location patterns.
+\item LUOGO is considerably weaker than the 3B Llama (0.523 vs.\ 0.790), likely because 1B parameters are insufficient to retain Italian location patterns.
 \end{enumerate}
 
 \subsection{Hardware constraint: Gemma-3 4B does not fit on 12\,GB}
 
-We attempted the same pipeline on \texttt{google/gemma-3-4b-it}. Even with aggressive memory savings — attention-only LoRA, \texttt{max\_length=768}, gradient checkpointing, paged 8-bit AdamW, disabled \texttt{assistant\_only\_loss}, and \texttt{PYTORCH\_CUDA\_ALLOC\_CONF=expandable\_segments} — training OOMs at the cross-entropy step. Gemma-3's 262{,}144-token vocabulary forces a \texttt{[seq, 262K]} logits tensor; in fp32 (forced by autocast) at \texttt{max\_length=768}, this is $\sim$800\,MB, plus its gradient ($\sim$800\,MB). Weights + activations already consume $\sim$9.5\,GB, leaving insufficient headroom. Fitting Gemma-3 4B on 12\,GB would require chunked cross-entropy (e.g., liger-kernel) or layer offloading. We treat this as a known constraint of the consumer-GPU setup; it is itself an informative finding: \textbf{Llama-3.2-3B (3B params) fits comfortably on 12\,GB while Gemma-3 4B (4.3B) does not}, making Llama-3 the better small-LLM choice when the deployment target is a single 12\,GB card.
+Running the same pipeline on \texttt{google/gemma-3-4b-it} proved infeasible. Even with every reasonable memory-saving measure — attention-only LoRA, \texttt{max\_length=768}, gradient checkpointing, paged 8-bit AdamW, disabled \texttt{assistant\_only\_loss}, and \texttt{PYTORCH\_CUDA\_ALLOC\_CONF=expandable\_segments} — training OOMs at the cross-entropy step. The root cause is Gemma-3's 262{,}144-token vocabulary: it forces a \texttt{[seq, 262K]} logits tensor that in fp32 (required by autocast) at \texttt{max\_length=768} consumes $\sim$800\,MB, plus another $\sim$800\,MB for its gradient. Weights and activations already occupy $\sim$9.5\,GB, leaving no room. Fitting Gemma-3 4B on 12\,GB would require chunked cross-entropy (e.g., liger-kernel) or layer offloading — neither of which is a quick fix. The practical conclusion: \textbf{Llama-3.2-3B fits comfortably on 12\,GB while Gemma-3 4B does not}, making Llama-3 the safer choice for 12\,GB deployment targets.
 
 \subsection{Out-of-distribution generalization}
 
-To verify the model learned the \textit{concept} of each entity type rather than memorizing Italian-specific surface forms, we ran an OOD test where gold note 0 was rewritten with all entity values replaced by Central Asian counterparts: \textit{Yusuf} (Kazakh name) for the patient, \textit{Almaty} for Bologna, \textit{Istituto Saryarka} (invented Kazakh hospital) for Istituto Rizzoli, \textit{ottobre del 2034} (future date) for January 2017, \textit{Tashkent} for Trieste, and \textit{KAZMU} (invented Kazakh medical authority) for ASUGI. None of these strings appear anywhere in the training data. The model achieved \textbf{recall $= 1.000$} on all 8 substituted entities, redacting them correctly to the appropriate placeholder tag. This confirms genuine conceptual generalization.
+To check whether the model had learned the \textit{concept} of each entity type or was simply matching Italian surface forms memorized from training, we rewrote gold note 0 with all entity values replaced by Central Asian counterparts: \textit{Yusuf} (Kazakh name) for the patient, \textit{Almaty} for Bologna, \textit{Istituto Saryarka} (invented Kazakh hospital) for Istituto Rizzoli, \textit{ottobre del 2034} (future date) for January 2017, \textit{Tashkent} for Trieste, and \textit{KAZMU} (invented Kazakh medical authority) for ASUGI. None of these strings appear anywhere in training. The model achieved \textbf{recall $= 1.000$} on all 8 substituted entities, tagging each to the correct placeholder. This is evidence of genuine conceptual generalization rather than surface memorization.
 
 \subsection{Training cost and reproducibility}
 
@@ -314,33 +314,33 @@ To verify the model learned the \textit{concept} of each entity type rather than
 
 \subsection{Conclusion}
 
-We fine-tuned \texttt{meta-llama/Llama-3.2-3B} with LoRA on style-anchored Gemini-generated synthetic data plus 80 manually-annotated Italian clinical notes. Under rigorous 5-fold cross-validation our system achieves macro-F1 $= 0.6486 \pm 0.073$, exceeding the best zero-shot result from Miranda et al.\ \cite{miranda2025mamma} (\texttt{gemma3:12b} at 0.620) by $+0.029$. The largest per-category gain is \textbf{ETÀ $+0.144$}, the most striking demonstration that fine-tuning resolves age-format ambiguities that confuse general-purpose models. The same pipeline applied to Gemma-3 1B (1B parameters) matches the 12B zero-shot result at 12$\times$ fewer parameters.
+Fine-tuning \texttt{meta-llama/Llama-3.2-3B} with LoRA on style-anchored Gemini-generated synthetic data plus 80 manually-annotated Italian clinical notes yields macro-F1 $= 0.6486 \pm 0.073$ under 5-fold cross-validation, beating the best zero-shot result from Miranda et al.\ \cite{miranda2025mamma} (\texttt{gemma3:12b} at 0.620) by $+0.029$ using a model four times smaller. The biggest per-category gain is ETÀ at $+0.144$, which reflects how fine-tuning resolves age-format ambiguities that trip up general-purpose models. Applying the same pipeline to Gemma-3 1B (1B parameters) matches the 12B zero-shot result at 12$\times$ fewer parameters.
 
-Three findings stand independent of the headline numbers:
+Beyond the headline numbers, three results are worth highlighting independently:
 
-\paragraph{Synthetic-data style transfer matters far more than synthetic-data volume.} A few hundred well-styled samples beat thousands of mis-styled ones. The control experiment (training on stylistically mismatched synthetic data alone) produced macro-F1 $= 0.18$ — \textit{worse than zero-shot}. The $\sim$\$10 spent on Gemini-anchored synthetic was the largest single improvement of the project.
+\paragraph{Synthetic data style matters more than volume.} A few hundred well-styled samples outperform thousands of mismatched ones. The control experiment — training on stylistically incompatible synthetic data alone — produced macro-F1 $= 0.18$, worse than zero-shot. The $\sim$\$10 spent on Gemini-anchored synthetic generation was the single largest improvement in the project.
 
-\paragraph{Entity-distribution balancing has measurable returns.} Adding 475 explicitly name-free synthetic cases to correct a 4$\times$ NOME over-representation moved NOME F1 from 0.36 to 0.71 under cross-validation, closing 71\% of the gap to the paper's best.
+\paragraph{Entity-distribution balancing has measurable, predictable returns.} Adding 475 name-free synthetic cases to correct a 4$\times$ NOME over-representation moved NOME F1 from 0.36 to 0.71 under cross-validation, recovering 71\% of the gap to the paper's best.
 
-\paragraph{Doubling style-anchored synthetic data approximately halved CV variance.} Going from 878 (v3) to 1{,}676 (v4) synthetic samples reduced std from 0.144 to 0.073 and lifted the mean from 0.535 to 0.649. Style-matched synthetic still has marginal value through at least 1{,}700 samples.
+\paragraph{More style-matched synthetic data primarily reduces variance.} Going from 878 (v3) to 1{,}676 (v4) synthetic samples cut the CV standard deviation from 0.144 to 0.073 and raised the mean from 0.535 to 0.649. Style-matched synthetic retains value through at least 1{,}700 samples, though mostly as a stabilizer rather than a mean-pusher.
 
-Overall: a fine-tuned 3B-parameter LLM, running on a 12\,GB consumer GPU, beats zero-shot 12B+ models on Italian clinical de-identification under 5-fold cross-validation. The total cost is $\sim$\$15 in Gemini API + $\sim$25 hours of training compute. The methodology generalizes to any low-resource clinical NLP task in which synthetic data can be conditioned on a small gold set.
+In summary, a fine-tuned 3B-parameter LLM on a 12\,GB consumer GPU beats zero-shot 12B+ models on Italian clinical de-identification under 5-fold cross-validation, at a total cost of roughly \$15 in API calls and $\sim$25 GPU-hours. The methodology should transfer to any low-resource clinical NLP task where a small gold set can anchor synthetic data generation.
 
 \subsection{Future work}
 
-\paragraph{1. BERT-NER baseline.} Fine-tune \texttt{dbmdz/bert-base-italian-xxl-cased} for token classification on the same 80 gold (with the same 5-fold CV). Token classification typically reaches F1 $\geq 0.85$ on Italian clinical NER, and the reference paper explicitly notes the absence of this baseline as a limitation. This is the highest-priority next experiment.
+\paragraph{1. BERT-NER baseline.} Fine-tuning \texttt{dbmdz/bert-base-italian-xxl-cased} for token classification on the same 80-note gold with identical 5-fold CV would fill the gap that Miranda et al.\ explicitly flag as a limitation. Token classification models typically reach F1 $\geq 0.85$ on Italian clinical NER, so this is the most important missing comparison.
 
-\paragraph{2. Italian-pretrained base model.} Replace \texttt{Llama-3.2-3B} with \texttt{Minerva-3B-Italian} or a clinical variant such as \texttt{MedGemma}. Stronger language priors should lift NOME and LUOGO without changing the training pipeline.
+\paragraph{2. Italian-pretrained base model.} Replacing \texttt{Llama-3.2-3B} with \texttt{Minerva-3B-Italian} or a clinical variant such as \texttt{MedGemma} should improve NOME and LUOGO without any changes to the training pipeline, simply from stronger language priors.
 
-\paragraph{3. Constrained generation for production deployment.} Add \texttt{outlines} or \texttt{lm-format-enforcer} to guarantee placeholder-only output even on adversarial inputs, eliminating the residual risk of leaked PII in the model's free-form output.
+\paragraph{3. Constrained generation for production.} Adding \texttt{outlines} or \texttt{lm-format-enforcer} would guarantee placeholder-only output even on adversarial inputs, eliminating the residual risk of PII leaking through the model's free-form generation.
 
-\paragraph{4. Chunked cross-entropy for 4B+ models.} Integrate \texttt{liger-kernel}'s fused chunked CE to fit Gemma-3 4B and similar large-vocab models on 12\,GB hardware, enabling broader architecture comparisons under the same compute budget.
+\paragraph{4. Chunked cross-entropy for 4B+ models.} Integrating \texttt{liger-kernel}'s fused chunked CE would allow Gemma-3 4B and other large-vocabulary models to fit on 12\,GB hardware, enabling broader architecture comparisons under the same compute budget.
 
-\paragraph{5. Expand the gold annotation.} Active learning loop: use the model to pre-annotate unlabeled clinical text from external Italian hospitals, have a clinician review, and grow the gold set to 300--500 notes. Our current variance ($\pm 0.073$) suggests doubling the gold size could push macro-F1 above 0.75.
+\paragraph{5. Grow the gold annotation.} An active learning loop — using the model to pre-annotate unlabeled clinical text, then having a clinician review — could expand the gold set to 300--500 notes. Given the current CV variance of $\pm 0.073$, roughly doubling the gold size should push macro-F1 past 0.75.
 
-\paragraph{6. Hybrid system.} Combine BERT-NER (high-precision span extraction) with the fine-tuned LLM (natural-language redaction with surrogate names) for downstream readability. The LLM can replace \texttt{[NOME]} with realistic placeholder names while BERT-NER guarantees nothing was missed.
+\paragraph{6. Hybrid system.} Combining BERT-NER (high-precision span extraction) with the fine-tuned LLM (natural-language redaction with surrogate names) would offer the best of both: BERT guarantees nothing is missed, and the LLM can replace \texttt{[NOME]} with plausible placeholder names to preserve downstream readability.
 
-\paragraph{7. Cross-hospital validation.} Test on proprietary clinical text from a different Italian institution to assess generalization beyond the E3C/CLinkaRT corpus style.
+\paragraph{7. Cross-hospital validation.} Testing on proprietary clinical text from a different Italian institution would establish how much of the current performance is tied to the E3C/CLinkaRT corpus style and how much generalizes.
 
 % ===================================================================
 \section*{Data and code availability}

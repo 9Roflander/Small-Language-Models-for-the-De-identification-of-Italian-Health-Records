@@ -1,0 +1,74 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>09 · NOME Problem</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar ph2"></div>
+<div class="slide top">
+  <div class="tag t-p2">Phase 2 — Distribution Fix</div>
+  <h2>The NOME over-representation problem</h2>
+  <p class="lead">Style was fixed, but the model still hallucinated <code>[NOME]</code> tags everywhere. The cause: the synthetic data had 4× more names per note than the gold standard.</p>
+
+  <div class="g2 mt16">
+    <div>
+      <div class="card cred">
+        <h3>The imbalance</h3>
+        <div style="margin-top:16px;">
+          <div class="bar-row">
+            <span class="bar-lbl">Gold notes</span>
+            <div class="bar-track"><div class="bar-fill" style="width:24%;background:var(--p2);"></div></div>
+            <span class="bar-val" style="color:var(--p2);">0.58</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-lbl">Early synthetic</span>
+            <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--red);"></div></div>
+            <span class="bar-val" style="color:var(--red);">2.38</span>
+          </div>
+          <p style="font-size:12px;color:var(--dim);margin-top:4px;">Names per note</p>
+        </div>
+        <div class="callout red mt14" style="font-size:13px;">
+          4× over-representation of names in synthetic data.
+        </div>
+      </div>
+      <div class="card mt14">
+        <h3>What this caused</h3>
+        <p class="mt8">The model began hallucinating <code>[NOME]</code> tags in normal text, crushing precision.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card cp2">
+        <h3>The fix: name-free generator</h3>
+        <p class="mt8">A second generator (<code>generate_noname.py</code>) instructs Gemini to refer to patients only through anonymous descriptors:</p>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin:12px 0;">
+          <span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:13px;color:var(--muted);font-style:italic;">la paziente</span>
+          <span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:13px;color:var(--muted);font-style:italic;">l'uomo</span>
+          <span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:13px;color:var(--muted);font-style:italic;">il soggetto</span>
+          <span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:13px;color:var(--muted);font-style:italic;">il paziente</span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);">Any output containing a NOME entity is hard-rejected by the validator.</p>
+      </div>
+
+      <div class="card cp2 mt14" style="text-align:center;padding:22px;">
+        <div style="display:flex;gap:20px;align-items:center;justify-content:center;">
+          <div>
+            <div class="stat sred" style="font-size:40px;">0.36</div>
+            <div class="sl">NOME F1<br>before fix</div>
+          </div>
+          <div style="font-size:28px;color:var(--dim);">→</div>
+          <div>
+            <div class="stat sp2" style="font-size:40px;">0.71</div>
+            <div class="sl">NOME F1<br>after 475 name-free samples</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout green mt14" style="font-size:14px;">
+        <strong>Lesson:</strong> synthetic entity distributions must mirror the gold distribution. A mismatch in entity frequency is just as damaging as a mismatch in text style.
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="08.html">← Prev</a>
+  <span class="nav-center">9 / 15</span>
+  <a href="10.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='10.html';if(e.key==='ArrowLeft')location.href='08.html';});</script>
+</body></html>

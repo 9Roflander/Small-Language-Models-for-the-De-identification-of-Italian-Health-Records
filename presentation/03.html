@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>03 · Reference Paper</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar ph0"></div>
+<div class="slide top">
+  <div class="tag t-dim">Starting Point</div>
+  <h2>What existed — and what was missing</h2>
+  <p class="lead">Miranda et al. (CLiC-it 2025) tested zero-shot LLMs on 80 annotated notes. Best result: <strong style="color:var(--text);">gemma3:12B at macro-F1 = 0.620.</strong></p>
+
+  <div class="card mt20" style="overflow:auto;">
+    <table>
+      <thead><tr><th>Model</th><th>Params</th><th>NOME</th><th>ETÀ</th><th>DATA</th><th>LUOGO</th><th>Macro F1</th></tr></thead>
+      <tbody>
+        <tr><td><code>llama3.2:3b</code></td><td>3B</td><td>0.53</td><td>0.41</td><td>0.29</td><td>0.41</td><td>0.41</td></tr>
+        <tr><td><code>gemma3:4b</code></td><td>4B</td><td>0.73</td><td>0.30</td><td>0.27</td><td>0.75</td><td>0.51</td></tr>
+        <tr><td><code>mistral:7b</code></td><td>7B</td><td>0.77</td><td>0.24</td><td>0.37</td><td>0.34</td><td>0.43</td></tr>
+        <tr><td><code>phi4:14b</code></td><td>14B</td><td>0.44</td><td>0.23</td><td>0.33</td><td>0.55</td><td>0.39</td></tr>
+        <tr class="hl"><td><code>gemma3:12b</code> 🏆 paper best</td><td>12B</td><td><strong>0.81</strong></td><td class="tr">0.14</td><td>0.65</td><td><strong>0.88</strong></td><td class="tb">0.620</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="g2 mt20">
+    <div class="callout red">
+      <strong>The gap (§6 Limitations):</strong><br>
+      "Fine-tuned baselines were not evaluated."<br><br>
+      This work fills that gap.
+    </div>
+    <div>
+      <div class="card cred">
+        <h3>ETÀ weakness across all models</h3>
+        <p class="mt8">Best zero-shot scores only <strong style="color:var(--red);">0.14 on ETÀ</strong>. Age expressions vary widely; zero-shot models miss them without training signal.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="02.html">← Prev</a>
+  <span class="nav-center">3 / 15</span>
+  <a href="04.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='04.html';if(e.key==='ArrowLeft')location.href='02.html';});</script>
+</body></html>

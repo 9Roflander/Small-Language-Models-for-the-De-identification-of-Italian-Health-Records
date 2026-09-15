@@ -1,0 +1,71 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>11 · Iteration History &amp; v4 Results</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar phr"></div>
+<div class="slide top">
+  <div class="tag t-res">Results</div>
+  <h2>The full development arc and final v4 results</h2>
+
+  <div class="g2 mt12">
+    <div>
+      <div class="card" style="border-top:2px solid var(--p2);overflow:auto;">
+        <h3>Iteration history (Llama-3.2-3B)</h3>
+        <table style="margin-top:10px;">
+          <thead><tr><th>Ver.</th><th>Change</th><th>Macro-F1</th></tr></thead>
+          <tbody>
+            <tr><td><code>v0</code></td><td>JSON extraction output</td><td class="tr">0.13</td></tr>
+            <tr><td><code>v1</code></td><td>Inline redaction format</td><td class="tr">0.18</td></tr>
+            <tr><td><code>v2</code></td><td>Style-anchored synthetic data</td><td style="color:var(--p1);font-weight:700;">0.49</td></tr>
+            <tr><td><code>v3</code></td><td>Name-free generator (878 synth)</td><td style="color:var(--p1);font-weight:700;">0.535 ± 0.144</td></tr>
+            <tr class="ours"><td><code>v4</code></td><td>Doubled volume (1,676 synth)</td><td class="tg">0.649 ± 0.073</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout green mt14" style="font-size:14px;">
+        Doubling style-matched synthetic data from 878 → 1,676 samples halved the standard deviation (0.144 → 0.073) and recovered a catastrophic fold collapse.
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="border-top:2px solid var(--res);">
+        <h3>v4 per-category F1 (5-fold mean ± std)</h3>
+        <div style="margin-top:14px;">
+          <div class="bar-row">
+            <span class="bar-lbl">LUOGO/IND.</span>
+            <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--p2);"></div></div>
+            <span class="bar-val" style="color:var(--p2);">0.790</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-lbl">NOME</span>
+            <div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--p2);"></div></div>
+            <span class="bar-val" style="color:var(--p2);">0.714</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-lbl">ETÀ</span>
+            <div class="bar-track"><div class="bar-fill" style="width:70%;background:var(--p1);"></div></div>
+            <span class="bar-val" style="color:var(--p1);">0.554</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-lbl">DATA</span>
+            <div class="bar-track"><div class="bar-fill" style="width:68%;background:var(--p1);"></div></div>
+            <span class="bar-val" style="color:var(--p1);">0.536</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt14" style="text-align:center;padding:18px;border-top:2px solid var(--res);">
+        <div style="display:flex;gap:24px;align-items:center;justify-content:center;">
+          <div><div class="stat sres" style="font-size:42px;">0.649</div><div class="sl">Mean macro-F1</div></div>
+          <div><div class="stat" style="font-size:30px;color:var(--muted);">± 0.073</div><div class="sl">Std dev</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="10.html">← Prev</a>
+  <span class="nav-center">11 / 15</span>
+  <a href="12.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='12.html';if(e.key==='ArrowLeft')location.href='10.html';});</script>
+</body></html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>15 · Findings</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar phr"></div>
+<div class="slide top">
+  <div class="tag t-res">Conclusion</div>
+  <h2>Three findings that stand independent of the headline number</h2>
+
+  <div class="g2 mt16">
+    <div>
+      <div class="card" style="border-top:2px solid var(--res);">
+        <div class="steps mt8">
+          <div class="step">
+            <div class="sn res">1</div>
+            <div class="sb">
+              <h3 style="font-size:15px;">Style transfer matters more than volume</h3>
+              <p>Mismatched synthetic data gave F1 = 0.18 — <em>worse than zero-shot</em>. Getting the style right (~$10 in Gemini API) was the single largest improvement in the project.</p>
+            </div>
+          </div>
+          <div class="step" style="margin-top:14px;">
+            <div class="sn res">2</div>
+            <div class="sb">
+              <h3 style="font-size:15px;">Entity distribution must be controlled</h3>
+              <p>4× NOME over-representation in synthetic data collapsed NOME precision. Adding 475 name-free examples moved NOME F1 from 0.36 → 0.71. The effect is predictable and fixable.</p>
+            </div>
+          </div>
+          <div class="step" style="margin-top:14px;">
+            <div class="sn res">3</div>
+            <div class="sb">
+              <h3 style="font-size:15px;">More style-matched data reduces variance</h3>
+              <p>Doubling from 878 → 1,676 synthetic samples halved CV std (0.144 → 0.073). Style-matched volume has diminishing mean returns but continuing variance returns past 1,700 samples.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="border-top:2px solid var(--p2);">
+        <h3>Headline result</h3>
+        <p class="mt8" style="font-size:15px;line-height:1.7;">A 3B fine-tuned model beats the best 12B zero-shot model from Miranda et al. (CLiC-it 2025) by +0.029 macro-F1 using a single 12 GB GPU. A 1B model nearly matches it.</p>
+        <div class="callout green mt14" style="font-size:13px;">
+          Fine-tuning with style-anchored synthetic data closes the scale gap on narrow, well-defined NLP tasks.
+        </div>
+      </div>
+      <div class="card mt14" style="border-top:2px solid var(--dim);">
+        <h3>Open directions</h3>
+        <div style="font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:7px;margin-top:8px;">
+          <div>→ BERT-NER baseline (typically F1 ≥ 0.85 on clinical NER)</div>
+          <div>→ Italian-pretrained base (Minerva-3B, MedGemma)</div>
+          <div>→ Active learning to expand the 80-note gold set</div>
+          <div>→ Chunked cross-entropy to fit Gemma-3 4B in 12 GB</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:18px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 20px;display:flex;align-items:center;gap:24px;">
+    <div style="font-size:13px;color:var(--dim);flex:1;">Code, training scripts, result JSONs, and synthetic data pipeline available in the project repository.</div>
+    <div style="display:flex;gap:20px;text-align:center;">
+      <div><div class="stat sres" style="font-size:26px;">0.649</div><div style="font-size:11px;color:var(--dim);">macro-F1</div></div>
+      <div><div class="stat sp2" style="font-size:26px;">3B</div><div style="font-size:11px;color:var(--dim);">params</div></div>
+      <div><div class="stat sp1" style="font-size:26px;">~$15</div><div style="font-size:11px;color:var(--dim);">data cost</div></div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="14.html">← Prev</a>
+  <span class="nav-center">15 / 15</span>
+  <span style="color:var(--dim);font-size:14px;">End</span>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')location.href='14.html';});</script>
+</body></html>

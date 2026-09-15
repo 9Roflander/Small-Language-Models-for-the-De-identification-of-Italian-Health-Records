@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>04 · Why Phase 1</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar ph1"></div>
+<div class="slide top">
+  <div class="tag t-p1">Phase 1 — Motivation</div>
+  <h2>The base model isn't ready for Italian clinical text</h2>
+  <p class="lead"><code>meta-llama/Llama-3.2-3B</code> is trained predominantly on English web text. Italian clinical prose is a completely different register.</p>
+
+  <div class="g2 mt20">
+    <div>
+      <div class="card cred">
+        <h3>What makes Italian clinical prose hard</h3>
+        <div class="steps mt12">
+          <div class="step"><div class="sn red">1</div><div class="sb"><h3>Dense medical terminology</h3><p>Latin abbreviations, diagnostic codes, specialty jargon</p></div></div>
+          <div class="step"><div class="sn red">2</div><div class="sb"><h3>Passive constructions</h3><p>Heavy use of impersonal forms: <em>si riscontra, viene effettuato</em></p></div></div>
+          <div class="step"><div class="sn red">3</div><div class="sb"><h3>Variable date/age formats</h3><p>Dozens of ways to write the same date or age in clinical notes</p></div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card cp1">
+        <h3>The two-problems-at-once trap</h3>
+        <p class="mt8">Skipping Phase 1 forces the model to learn two things at once:</p>
+        <div style="display:flex;gap:12px;margin-top:16px;">
+          <div style="flex:1;background:rgba(247,129,102,.08);border:1px solid rgba(247,129,102,.25);border-radius:8px;padding:14px;text-align:center;">
+            <div style="font-size:22px;margin-bottom:6px;">🇮🇹</div>
+            <p style="font-size:13px;margin:0;">Learn Italian clinical register</p>
+          </div>
+          <div style="color:var(--dim);display:flex;align-items:center;font-size:20px;">+</div>
+          <div style="flex:1;background:rgba(247,129,102,.08);border:1px solid rgba(247,129,102,.25);border-radius:8px;padding:14px;text-align:center;">
+            <div style="font-size:22px;margin-bottom:6px;">🏷️</div>
+            <p style="font-size:13px;margin:0;">Learn the redaction task</p>
+          </div>
+        </div>
+        <div class="callout orange mt16" style="font-size:14px;">
+          Phase 1 <strong>decouples</strong> these. Domain knowledge first, then task learning.
+        </div>
+      </div>
+      <div class="card mt16">
+        <h3>The solution: continual pre-training</h3>
+        <p class="mt8">Pre-train on unlabeled Italian clinical text so the model learns the domain before redaction training.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="03.html">← Prev</a>
+  <span class="nav-center">4 / 15</span>
+  <a href="05.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='05.html';if(e.key==='ArrowLeft')location.href='03.html';});</script>
+</body></html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>02 · The Problem</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar ph0"></div>
+<div class="slide top">
+  <div class="tag t-dim">Motivation</div>
+  <h2>Why de-identification matters</h2>
+  <div class="g2" style="gap:22px;">
+    <div>
+      <div class="card cred">
+        <h3>⚖️ The GDPR problem</h3>
+        <p class="mt8">Hospitals generate thousands of free-text clinical notes. Before reuse or sharing, <strong style="color:var(--text);">every PII span must be removed</strong>.</p>
+        <p class="mt8">Manual redaction is too slow and expensive — automation is required for scale.</p>
+      </div>
+      <div class="callout mt16">
+        <strong>The task — inline redaction:</strong> given a raw Italian clinical note, output the same text with every PII span replaced by a typed placeholder tag.
+      </div>
+      <div class="card mt16" style="background:var(--surface2);border:1px solid var(--border);padding:14px 18px;">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:6px;">Input</p>
+        <p style="font-size:14px;color:var(--text);font-family:'SF Mono','Fira Code',monospace;line-height:1.6;">Il paziente <span style="background:rgba(247,129,102,.2);color:var(--red);border-radius:3px;padding:1px 4px;">Mario Rossi</span>, di <span style="background:rgba(247,129,102,.2);color:var(--red);border-radius:3px;padding:1px 4px;">67</span> anni, ricoverato a <span style="background:rgba(247,129,102,.2);color:var(--red);border-radius:3px;padding:1px 4px;">Bologna</span> il <span style="background:rgba(247,129,102,.2);color:var(--red);border-radius:3px;padding:1px 4px;">marzo 2021</span>...</p>
+        <p style="font-size:13px;color:var(--muted);margin:10px 0 6px;">Output</p>
+        <p style="font-size:14px;color:var(--text);font-family:'SF Mono','Fira Code',monospace;line-height:1.6;">Il paziente <span style="background:rgba(63,185,80,.15);color:var(--p2);border-radius:3px;padding:1px 4px;">[NOME]</span>, di <span style="background:rgba(63,185,80,.15);color:var(--p2);border-radius:3px;padding:1px 4px;">[ETÀ]</span> anni, ricoverato a <span style="background:rgba(63,185,80,.15);color:var(--p2);border-radius:3px;padding:1px 4px;">[LUOGO/INDIRIZZO]</span> il <span style="background:rgba(63,185,80,.15);color:var(--p2);border-radius:3px;padding:1px 4px;">[DATA]</span>...</p>
+      </div>
+    </div>
+    <div>
+      <div class="card cp2">
+        <h3>🏷️ Four PII categories</h3>
+        <div style="margin-top:14px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);">
+            <code style="width:76px;text-align:center;">NOME</code>
+            <div><p style="font-size:14px;margin:0;">Patient and doctor names</p><p style="font-size:12px;color:var(--dim);margin:0;">e.g. Mario Rossi, Dr. Bianchi</p></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);">
+            <code style="width:76px;text-align:center;">ETÀ</code>
+            <div><p style="font-size:14px;margin:0;">Age expressions</p><p style="font-size:12px;color:var(--dim);margin:0;">e.g. 67 anni, all'età di 70</p></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);">
+            <code style="width:76px;text-align:center;">DATA</code>
+            <div><p style="font-size:14px;margin:0;">All date formats</p><p style="font-size:12px;color:var(--dim);margin:0;">e.g. marzo 2018, 15/04/2020, 2017</p></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:9px 0;">
+            <code style="width:76px;text-align:center;font-size:10px;">LUOGO/IND.</code>
+            <div><p style="font-size:14px;margin:0;">Locations and addresses</p><p style="font-size:12px;color:var(--dim);margin:0;">e.g. Ospedale San Raffaele, Milano</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="01.html">← Prev</a>
+  <span class="nav-center">2 / 15</span>
+  <a href="03.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='03.html';if(e.key==='ArrowLeft')location.href='01.html';});</script>
+</body></html>

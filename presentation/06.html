@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>06 · Phase 2 First Attempt</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar ph2"></div>
+<div class="slide top">
+  <div class="tag t-p2">Phase 2 — First Attempt</div>
+  <h2>Starting Phase 2: the wrong output format</h2>
+  <p class="lead">Phase 2 begins from <code>temp_merged_phase1</code>. The first question: how should the model output its answer? The first answer was wrong.</p>
+
+  <div class="g2 mt20">
+    <div>
+      <div class="card cred">
+        <h3>Attempt: JSON extraction</h3>
+        <p class="mt8">The natural NLP framing — have the model extract entities as a structured JSON object with spans and types.</p>
+        <div style="margin-top:14px;background:var(--surface2);border-radius:6px;padding:14px;font-family:'SF Mono',monospace;font-size:13px;color:var(--muted);line-height:1.6;">
+          {<br>
+          &nbsp;&nbsp;"entities": [<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;{"text": "Mario Rossi", "type": "NOME"},<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;{"text": "67", "type": "ETÀ"}<br>
+          &nbsp;&nbsp;]<br>
+          }
+        </div>
+      </div>
+      <div class="card cred mt16">
+        <h3>Result: macro-F1 ≈ 0.13</h3>
+        <div class="steps" style="margin-top:12px;">
+          <div class="step"><div class="sn red">✗</div><div class="sb"><p>JSON parsing broke on malformed output</p></div></div>
+          <div class="step"><div class="sn red">✗</div><div class="sb"><p>Span offsets were inconsistent</p></div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card cp2">
+        <h3>The fix: inline redaction</h3>
+        <p class="mt8">Output the <em>full note text</em> with PII replaced in place. No parsing, no JSON, no spans — the output IS the answer.</p>
+        <div style="margin-top:14px;background:var(--surface2);border-radius:6px;padding:14px;font-family:'SF Mono',monospace;font-size:13px;color:var(--p2);line-height:1.6;">
+          Il paziente [NOME], di [ETÀ] anni,<br>
+          è stato ricoverato presso<br>
+          [LUOGO/INDIRIZZO] il [DATA]...
+        </div>
+        <p class="mt12" style="font-size:14px;color:var(--muted);">Inline redaction removes parsing and matches the evaluation metric.</p>
+      </div>
+      <div class="callout green mt16">
+        <strong>Key insight:</strong> when the task is redaction, make the output a redacted document — not a metadata extraction. The model is a text processor, not a JSON emitter.
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="05.html">← Prev</a>
+  <span class="nav-center">6 / 15</span>
+  <a href="07.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='07.html';if(e.key==='ArrowLeft')location.href='05.html';});</script>
+</body></html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>08 · Synthetic Pipeline</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar ph2"></div>
+<div class="slide top">
+  <div class="tag t-p2">Phase 2 — Synthetic Data Pipeline</div>
+  <h2>Building the right training data: style-anchored generation</h2>
+
+  <div class="g2">
+    <div>
+      <div class="card cp2">
+        <h3>The fix: style anchoring</h3>
+        <p class="mt8">Every Gemini generation call receives <strong style="color:var(--text);">3 real gold notes as few-shot style examples</strong>. Rotated across batches to cover short, medium, and long notes.</p>
+        <div class="pipe mt12">
+          <div class="pb" style="border-top:2px solid var(--p2);">
+            <div class="icon">📋</div>
+            <span>3 gold notes<br>style anchors</span>
+          </div>
+          <div class="pa">→</div>
+          <div class="pb" style="border-top:2px solid var(--pur);">
+            <div class="icon">✨</div>
+            <span>Gemini 2.5 Flash<br>generate batch</span>
+          </div>
+          <div class="pa">→</div>
+          <div class="pb" style="border-top:2px solid var(--red);">
+            <div class="icon">🔍</div>
+            <span>4-rule<br>validator</span>
+          </div>
+          <div class="pa">→</div>
+          <div class="pb" style="border-top:2px solid var(--p2);">
+            <div class="icon">✅</div>
+            <span>~1700<br>valid notes</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt16">
+        <h3>Validation rules (must pass)</h3>
+        <div class="steps mt10">
+          <div class="step"><div class="sn p2">1</div><div class="sb"><p>Entities appear in text and are removed in the redaction</p></div></div>
+          <div class="step"><div class="sn p2">2</div><div class="sb"><p>All entity types have matching <code>[TYPE]</code> tags</p></div></div>
+          <div class="step"><div class="sn p2">3</div><div class="sb"><p>Length and density bounds are enforced</p></div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card mt12" style="text-align:center;padding:20px;">
+        <div class="stat spur" style="font-size:44px;">~$15</div>
+        <div class="sl mt8">total Gemini API cost<br>for ~1,700 valid training notes</div>
+      </div>
+
+      <div class="callout green mt12" style="font-size:14px;">
+        <strong>Result:</strong> style-anchored synthetic data jumped macro-F1 from 0.18 to 0.49 — a +0.31 gain from fixing the generation style alone.
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="07.html">← Prev</a>
+  <span class="nav-center">8 / 15</span>
+  <a href="09.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='09.html';if(e.key==='ArrowLeft')location.href='07.html';});</script>
+</body></html>

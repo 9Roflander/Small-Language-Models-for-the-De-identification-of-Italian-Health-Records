@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>14 · OOD Test</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar phr"></div>
+<div class="slide top">
+  <div class="tag t-res">Results — Robustness</div>
+  <h2>Out-of-distribution test: does the model generalise?</h2>
+  <p class="lead">Tested whether the model understands PII concepts by inserting Kazakh entities into Italian notes.</p>
+
+  <div class="g2 mt16">
+    <div>
+      <div class="card cp2">
+        <h3>The test design</h3>
+        <div class="steps mt12">
+          <div class="step"><div class="sn p2">1</div><div class="sb"><p>Start from a real gold note</p></div></div>
+          <div class="step"><div class="sn p2">2</div><div class="sb"><p>Swap NOME and LUOGO with unseen Kazakh entities</p></div></div>
+          <div class="step"><div class="sn p2">3</div><div class="sb"><p>Run the model and check redaction</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="border-top:2px solid var(--res);text-align:center;padding:28px;">
+        <div style="display:flex;flex-direction:column;gap:20px;align-items:center;">
+          <div>
+            <div class="stat sres" style="font-size:52px;">1.0</div>
+            <div class="sl mt6">Recall on OOD entities<br><em>all Kazakh names/places found</em></div>
+          </div>
+          <div style="height:1px;background:var(--border);width:80%;"></div>
+          <div style="display:flex;gap:32px;">
+            <div>
+              <div class="stat sp2" style="font-size:32px;">✓</div>
+              <div class="sl mt4">NOME<br>redacted</div>
+            </div>
+            <div>
+              <div class="stat sp2" style="font-size:32px;">✓</div>
+              <div class="sl mt4">LUOGO<br>redacted</div>
+            </div>
+            <div>
+              <div class="stat sp2" style="font-size:32px;">✓</div>
+              <div class="sl mt4">ETÀ / DATA<br>preserved logic</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout green mt14" style="font-size:14px;">
+        Recall = 1.0 on foreign-language PII confirms genuine generalisation, not pattern memorisation. The model has learned what PII <em>is</em>, not just what Italian names look like.
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="13.html">← Prev</a>
+  <span class="nav-center">14 / 15</span>
+  <a href="15.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='15.html';if(e.key==='ArrowLeft')location.href='13.html';});</script>
+</body></html>

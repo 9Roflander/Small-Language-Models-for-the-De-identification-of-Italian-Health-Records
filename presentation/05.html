@@ -1,0 +1,77 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>05 · Phase 1</title>
+<link rel="stylesheet" href="_base.css"></head><body>
+<div class="phase-bar ph1"></div>
+<div class="slide top">
+  <div class="tag t-p1">Phase 1 — Domain Adaptation</div>
+  <h2>Continual pre-training on Italian clinical text</h2>
+
+  <div class="g2">
+    <div>
+      <div class="card cp1">
+        <h3>Training corpora</h3>
+        <div class="steps mt12">
+          <div class="step">
+            <div class="sn p1">1</div>
+            <div class="sb">
+              <h3><code>NLP-FBK/dyspnea-clinical-notes</code></h3>
+              <p>Italian clinical notes on dyspnea. Provides authentic clinical prose at the exact register of the target domain.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="sn p1">2</div>
+            <div class="sb">
+              <h3><code>praiselab-picuslab/DART</code></h3>
+              <p>Broader Italian clinical text across multiple specialties. Widens vocabulary coverage beyond a single condition.</p>
+            </div>
+          </div>
+        </div>
+        <p class="mt12" style="font-size:13px;color:var(--dim);">Unlabeled corpora only — no PII annotation needed.</p>
+      </div>
+
+      <div class="card mt16">
+        <h3>Objective: causal language modeling</h3>
+        <p class="mt8">Standard next-token prediction to internalize clinical vocabulary and style.</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="card cres">
+        <h3>Procedure</h3>
+        <div class="pipe">
+          <div class="pb" style="border-top:2px solid var(--p1);">
+            <div class="icon">🦙</div>
+            <span>Llama-3.2-3B<br>base weights</span>
+          </div>
+          <div class="pa">→</div>
+          <div class="pb" style="border-top:2px solid var(--p1);">
+            <div class="icon">📚</div>
+            <span>LoRA CPT<br>on Italian clinical</span>
+          </div>
+          <div class="pa">→</div>
+          <div class="pb" style="border-top:2px solid var(--p2);">
+            <div class="icon">🔀</div>
+            <span>merge_and_unload<br>(LoRA → weights)</span>
+          </div>
+          <div class="pa">→</div>
+          <div class="pb" style="border-top:2px solid var(--p2);">
+            <div class="icon">💾</div>
+            <span>temp_merged_<br>phase1/</span>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--muted);">LoRA targets all 7 projection layers.</p>
+      </div>
+
+      <div class="card mt16">
+        <h3>Output</h3>
+        <p class="mt8"><code>temp_merged_phase1/</code> — the starting checkpoint for Phase 2.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nav">
+  <a href="04.html">← Prev</a>
+  <span class="nav-center">5 / 15</span>
+  <a href="06.html">Next →</a>
+</div>
+<script>document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')location.href='06.html';if(e.key==='ArrowLeft')location.href='04.html';});</script>
+</body></html>
